@@ -1,0 +1,121 @@
+# B2B Order Portal - English language file
+# Copyright (C) 2025 Henaxis
+
+# Module
+Module580200Name = B2B Order Portal
+Module580200Desc = B2B portal for customer orders with product catalog and shopping cart
+
+# Setup
+B2BOrderSetup = B2B Portal Configuration
+B2BOrderPortalURL = Portal URL
+B2BOrderPortalTitle = Portal title
+B2BOrderProductsPerPage = Products per page
+B2BOrderAllowedCategories = Allowed categories
+B2BOrderAllowedCategoriesHelp = Select product categories visible in the portal (empty = all)
+B2BOrderAllowedTags = Allowed tags
+B2BOrderAllowedTagsHelp = Select product tags visible in the portal. Products matching selected categories OR tags are shown.
+B2BOrderNoTagsFound = No tags found (assign tags to products in Dolibarr first)
+B2BOrderAllTags = All tags
+B2BOrderDefaultPriceLevel = Default price level
+B2BOrderDefaultPriceLevelHelp = Price level used when a customer has no specific level assigned. Requires PRODUIT_MULTIPRICES to be active.
+B2BOrderPriceLevel = Level
+B2BOrderMultipricesDisabled = Multiple prices not active. Enable "Multiple prices per product" in the Products module to use this feature.
+B2BOrderShowStock = Show stock availability
+B2BOrderSetupNotComplete = Portal setup not complete. Check WEBPORTAL_USER_LOGGED setting.
+
+# Login
+B2BOrderLoginSubtitle = Sign in to the order portal
+B2BOrderSignIn = Sign In
+B2BOrderErrorAuthentication = Invalid login or password
+B2BOrderErrorInvalidToken = Invalid security token. Please try again.
+
+# Catalog
+B2BOrderCatalog = Catalog
+B2BOrderSearchProducts = Search products...
+B2BOrderAllCategories = All categories
+B2BOrderNoProducts = No products found.
+B2BOrderAddToCart = Add to cart
+B2BOrderProductAdded = Product added to cart
+B2BOrderProductNotAvailable = Product not available
+
+# Product
+B2BOrderInStock = In stock
+B2BOrderOutOfStock = Out of stock
+
+# Cart
+B2BOrderCart = Cart
+B2BOrderCartEmpty = Your cart is empty.
+B2BOrderUnitPriceHT = Unit price excl. tax
+B2BOrderLineTotalHT = Line total excl. tax
+B2BOrderTotalHT = Total excl. tax
+B2BOrderVAT = VAT
+B2BOrderTotalTTC = Total incl. tax
+B2BOrderContinueShopping = Continue shopping
+B2BOrderClearCart = Clear cart
+B2BOrderUpdateCart = Update cart
+B2BOrderProceedCheckout = Proceed to checkout
+B2BOrderCartUpdated = Cart updated
+B2BOrderItemRemoved = Item removed from cart
+B2BOrderCartCleared = Cart cleared
+B2BOrderConfirmRemove = Remove this item from the cart?
+B2BOrderConfirmClear = Clear the entire cart?
+
+# Checkout
+B2BOrderCheckout = Order review
+B2BOrderOrderSummary = Order details
+B2BOrderDeliveryInfo = Delivery information
+B2BOrderRefClient = Your reference
+B2BOrderRefClientPlaceholder = e.g. PO-12345
+B2BOrderNotePublic = Notes
+B2BOrderNotePlaceholder = Add any notes or special instructions...
+B2BOrderBackToCart = Back to cart
+B2BOrderSubmitOrder = Submit order
+B2BOrderConfirmSubmit = Confirm order submission?
+B2BOrderErrorCreatingOrder = Error creating order
+B2BOrderErrorAddingLine = Error adding line %s
+
+# Confirmation
+B2BOrderConfirmation = Order confirmation
+B2BOrderConfirmationTitle = Order submitted successfully!
+B2BOrderConfirmationMessage = Your order has been received and will be processed by our team.
+B2BOrderStatusDraft = Awaiting confirmation
+B2BOrderConfirmationNote = You will receive a confirmation once the order is validated.
+B2BOrderErrorOrderNotFound = Order not found.
+
+# Appearance tab
+B2BOrderDownloadCSSExample = Download CSS example
+B2BOrderCustomCSSHint = Tip: download the CSS example to see all customizable elements and their selectors.
+B2BOrderAppearance = Appearance
+B2BOrderLogo = Company logo
+B2BOrderLogoDesc = Logo image displayed in portal header and login page (JPG, PNG, WebP)
+B2BOrderLogoUploaded = Logo uploaded successfully
+B2BOrderLogoDeleted = Logo deleted
+B2BOrderFavicon = Favicon
+B2BOrderFaviconDesc = Site icon (ICO, PNG, SVG - recommended 32x32px)
+B2BOrderFaviconUploaded = Favicon uploaded successfully
+B2BOrderFaviconDeleted = Favicon deleted
+B2BOrderFaviconBadFormat = Invalid format. Use ICO, PNG or SVG.
+B2BOrderConfirmDeleteFile = Delete this file?
+B2BOrderColors = Colors
+B2BOrderPrimaryColor = Primary color
+B2BOrderPrimaryColorDesc = Main color for buttons, links and accents (default: #2e86de)
+B2BOrderPrimaryDarkColor = Primary dark color
+B2BOrderPrimaryDarkColorDesc = Darker version of primary color for hover states (default: #1a5fa8)
+B2BOrderResetDefault = Reset to default
+B2BOrderCustomCSS = Custom CSS
+B2BOrderCustomCSSDesc = Additional CSS injected into the portal. Use with care.
+B2BOrderFooterSettings = Footer
+B2BOrderFooterText = Footer text
+B2BOrderFooterTextDesc = Replaces the default copyright in the footer (leave empty for default)
+B2BOrderHidePoweredBy = Hide "Powered by Dolibarr"
+
+# Product Photos Tab
+B2BOrderPhotosTab = B2B Images
+B2BOrderPhotosTitle = Product images for B2B/B2C portals
+B2BOrderPhotosUpload = Upload images
+B2BOrderPhotosUploadHelp = Select one or more images (JPG, PNG, WebP). They will be renamed automatically.
+B2BOrderPhotosNone = No images uploaded for this product.
+B2BOrderPhotosUploaded = %s image(s) uploaded successfully
+B2BOrderPhotosDeleted = Image deleted
+B2BOrderPhotosErrorUpload = Error uploading image
+B2BOrderPhotosConfirmDelete = Delete this image?
