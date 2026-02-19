@@ -1,0 +1,169 @@
+# Italian language file for B2CStore module
+# Copyright (C) 2025 Henaxis
+
+ModuleB2CStoreName = B2C Storefront
+ModuleB2CStoreDesc = Vetrina B2C pubblica con catalogo prodotti, carrello e ordini per clienti non registrati o registrati.
+
+# Admin tabs
+B2CStoreSetup      = Configurazione
+B2CStoreAppearance = Aspetto
+B2CStoreSections   = Sezioni
+B2CStorePages      = Pagine
+
+# Admin labels
+B2CStoreGeneralSettings     = Impostazioni generali
+B2CStoreAdvancedSettings    = Impostazioni avanzate
+B2CStoreEnableRegistration  = Abilita registrazione clienti
+B2CStoreRegistrationApproval= Approvazione manuale registrazioni
+B2CStoreAllowGuestBrowsing  = Consenti navigazione senza login
+B2CStoreHidePricesGuest     = Nascondi prezzi agli ospiti
+B2CStoreCartRequiresLogin   = Richiedi login per il carrello
+B2CStoreRegistrationFields  = Campi registrazione (CSV)
+B2CStoreDefaultPriceLevel   = Livello di prezzo predefinito
+B2CStoreItemsPerPage        = Prodotti per pagina
+B2CStoreCustomerTypeEntId   = ID tipo società clienti
+B2CStoreNotificationEmail   = Email notifiche ordini
+B2CStoreMetaTitle           = Titolo meta (SEO)
+B2CStoreMetaDesc            = Descrizione meta (SEO)
+B2CStoreViewStore           = Apri lo store pubblico
+
+# Appearance
+B2CStoreLogo          = Logo
+B2CStoreFavicon       = Favicon
+B2CStoreColorPrimary  = Colore primario
+B2CStoreColorSecondary= Colore secondario
+B2CStoreColorAccent   = Colore accentuazione
+B2CStoreColorBg       = Colore sfondo
+B2CStoreColorText     = Colore testo
+B2CStoreFontFamily    = Font (CSS font-family)
+B2CStoreFooterText    = Testo footer
+B2CStorePoweredBy     = Mostra "Powered by"
+B2CStoreCustomCss     = CSS personalizzato
+B2CStoreDownloadCssExample = Scarica CSS di esempio
+
+# Sections
+B2CStoreSectionType           = Tipo sezione
+B2CStoreSectionHero           = Hero / Banner
+B2CStoreSectionAbout          = Chi siamo
+B2CStoreSectionServices       = Servizi
+B2CStoreSectionHistory        = Storia
+B2CStoreSectionProductsPreview= Prodotti in evidenza
+B2CStoreSectionContact        = Contatti
+B2CStoreSectionB2BLink        = Link portale B2B
+B2CStoreEditSection           = Modifica sezione
+B2CStoreBgColor               = Colore sfondo sezione
+B2CStoreCssClass              = Classe CSS aggiuntiva
+B2CStoreImage                 = Immagine (nome file)
+B2CStoreHeroCtaLabel          = Etichetta pulsante Hero
+B2CStoreFeaturedCount         = Numero prodotti evidenziati
+B2CStoreB2BLinkUrl            = URL portale B2B
+B2CStoreB2BLinkBtnText        = Testo pulsante B2B
+SaveOrder                     = Salva ordine
+
+# Pages
+B2CStorePagesIntro         = Modifica il contenuto delle pagine statiche dello store.
+B2CStorePageAbout          = Chi siamo
+B2CStorePageServices       = Servizi
+B2CStorePageHistory        = La nostra storia
+B2CStorePageContact        = Contattaci
+B2CStoreViewPage           = Anteprima
+B2CStoreContentHtmlAllowed = HTML di base consentito (no script)
+
+# Navbar / UI
+B2CStoreCart            = Carrello
+B2CStoreLogin           = Accedi
+B2CStoreLogout          = Esci
+B2CStoreRegister        = Registrati
+B2CStoreMyAccount       = Il mio account
+B2CStoreCatalog         = Catalogo
+B2CStoreAbout           = Chi siamo
+B2CStoreServices        = Servizi
+B2CStoreHistory         = Storia
+B2CStoreContact         = Contatti
+B2CStoreViewAllProducts = Vedi tutti i prodotti
+
+# Forms
+B2CStoreName            = Nome
+B2CStoreEmail           = Email
+B2CStorePhone           = Telefono
+B2CStoreSubject         = Oggetto
+B2CStoreMessage         = Messaggio
+B2CStoreSend            = Invia
+B2CStoreFirstname       = Nome
+B2CStoreLastname        = Cognome
+B2CStoreCompany         = Azienda
+B2CStorePassword        = Password
+B2CStorePasswordConfirm = Conferma password
+B2CStoreAddress         = Indirizzo
+B2CStoreZip             = CAP
+B2CStoreTown            = Città
+
+# Auth
+B2CStoreNoAccount       = Non hai un account?
+B2CStoreAlreadyAccount  = Hai già un account?
+B2CStoreLoginRequired   = Accesso richiesto.
+B2CStoreInvalidCredentials = Email o password non corretti.
+B2CStorePendingApproval = Il tuo account è in attesa di approvazione.
+B2CStoreRegisterSuccess = Registrazione completata! Puoi ora accedere.
+B2CStoreRegisterSuccessApproval = Registrazione completata! Attendi l'approvazione dell'amministratore.
+B2CStoreRegPasswordMismatch = Le password non coincidono.
+B2CStoreRegEmailExists  = Questa email è già registrata.
+B2CStoreRegTooManyAttempts = Troppi tentativi di registrazione. Riprova più tardi.
+B2CStoreRegistrationDisabled = La registrazione non è al momento disponibile.
+
+# Catalog / Product
+B2CStoreSearch          = Cerca
+B2CStoreAllCategories   = Tutte le categorie
+B2CStoreReset           = Azzera
+B2CStoreNoProducts      = Nessun prodotto trovato.
+B2CStoreAddToCart       = Aggiungi al carrello
+B2CStoreRef             = Rif.
+B2CStoreVatIncluded     = IVA inclusa
+B2CStoreLoginToOrder    = Accedi per aggiungere al carrello
+B2CStoreQty             = Qtà
+B2CStorePagination      = Navigazione pagine
+
+# Cart
+B2CStoreCartEmpty       = Il carrello è vuoto.
+B2CStoreViewCatalog     = Vai al catalogo
+B2CStoreContinueShopping= Continua lo shopping
+B2CStoreClearCart       = Svuota carrello
+B2CStoreRemove          = Rimuovi
+B2CStoreProceedCheckout = Procedi all'ordine
+B2CStoreUnit            = cad.
+B2CStoreSubtotalHT      = Subtotale (IVA escl.)
+B2CStoreVat             = IVA
+B2CStoreTotalTTC        = Totale (IVA incl.)
+
+# Checkout
+B2CStoreCheckout        = Ordine
+B2CStoreOrderSummary    = Riepilogo ordine
+B2CStoreDeliveryInfo    = Dati di consegna
+B2CStoreOrderNotes      = Note ordine
+B2CStorePaymentMethod   = Modalità di pagamento
+B2CStorePlaceOrder      = Conferma ordine
+B2CStoreEditCart        = Modifica carrello
+B2CStoreCartIsEmpty     = Il carrello è vuoto, impossibile effettuare l'ordine.
+B2CStorePriceHT         = Prezzo (IVA escl.)
+B2CStoreTotal           = Totale
+B2CStoreProduct         = Prodotto
+
+# Confirmation
+B2CStoreOrderConfirmed  = Ordine ricevuto!
+B2CStoreOrderRef        = Numero ordine
+B2CStoreOrderConfirmedMsg = Grazie per il tuo ordine. Riceverai una conferma via email.
+B2CStoreBackHome        = Torna alla home
+
+# Contact
+B2CStoreContactSuccess  = Messaggio inviato! Ti risponderemo il prima possibile.
+B2CStoreContactError    = Errore nell'invio del messaggio. Riprova.
+
+# B2B link section
+B2CStoreB2BLink         = Accedi al portale B2B
+
+# Errors
+B2CStoreModuleNotEnabled= Modulo non abilitato.
+B2CStoreAccessForbidden = Accesso negato.
+B2CStoreProductNotFound = Prodotto non trovato.
+B2CStoreOrderNotFound   = Ordine non trovato.
+B2CStoreOrderError      = Errore nella creazione dell'ordine. Riprova.
