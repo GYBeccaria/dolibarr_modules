@@ -35,4 +35,7 @@ $r = henaxai_call($db, $question, ['fk_user'=>$user->id, 'scope'=>'docflow'], fu
 1. Completare il mapping tool_use/tool_result per Anthropic (oggi base).
 2. ~~Portare manifest engine + discovery da henax-architect~~ — **fatto** (manifest/builder/discovery + 2 bin CLI, smoke-test ok).
 3. Shim config `HENAXAI_* <- SKYLLAM_* <- HENAXARCHITECT_AI_*` (già nel client) + script migrazione dati cache/log.
-4. Refactor `henax-architect` (UI grafo) e `skyllam` (chat) per consumare henax-ai.
+4. Refactor consumer per usare `henaxai_chat()` — **avviato (additivo, con guard, reversibile)**, verificato nell'istanza dev:
+   - `henax-architect` `architect_ai_call` → henax-ai (branch `refactor/consume-henax-ai`).
+   - `skyllam` `SkyllamLlm::chat()` → henax-ai, tool_calls ri-mappati a formato OpenAI (branch `refactor/consume-henax-ai`).
+   - Resta: rimuovere il codice AI legacy duplicato dopo cutover; agganciare i consumer manifest (architect UI, `skyllam_manifest`).
