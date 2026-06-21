@@ -14,8 +14,9 @@ Consolida `skyllam` (client) e `henax-architect` (service AI / manifest / discov
 | `lib/henaxai_service.lib.php` | cache + log + rate-limit + orchestratore — portato da architect_ai — funzionale |
 | `lib/henaxai_manifest.lib.php` | loader + validator + `extract_skyllam_block` (superficie AI-queryable) — **portato da architect, smoke-test ok su architect.json reale** |
 | `lib/vendor/{toml_parser,Spyc}.php` | vendor del manifest engine (toml entry rinominata) |
-| `lib/henaxai_manifest_builder.lib.php` | builder `manifest.yaml`→README/json — da portare (architect_manifest_builder, 538 righe) — TODO |
-| `lib/henaxai_discovery.lib.php` | grafo architettura — da portare (architect_discovery, 765 righe) — TODO |
+| `lib/henaxai_manifest_builder.lib.php` | builder `manifest.yaml`→README/architect.json/skyllam.json + autodiscovery — **portato, smoke-test ok** (genera i 3 file dal manifest di henax-ai) |
+| `lib/henaxai_discovery.lib.php` | grafo architettura `{nodes,edges}` — **portato** (owner-map estesa a henax-ai/henax-docflow) |
+| `bin/build_manifests.php` `bin/validate_manifests.php` | CLI con **bootstrap parametrico** (env `DOL_DOCUMENT_ROOT` o autodetect) — portati, lint ok |
 | `sql/llx_henaxai_cache.sql` `sql/llx_henaxai_log.sql` | tabelle tecniche, nomi sanati (no trattino) |
 | `manifest.yaml` | source-of-truth (genera README/architect.json/skyllam.json) |
 
@@ -32,6 +33,6 @@ $r = henaxai_call($db, $question, ['fk_user'=>$user->id, 'scope'=>'docflow'], fu
 
 ## TODO migrazione (sintesi — dettaglio in design/henax-ai.md)
 1. Completare il mapping tool_use/tool_result per Anthropic (oggi base).
-2. Portare manifest engine + discovery da henax-architect (rename simboli + tabelle).
+2. ~~Portare manifest engine + discovery da henax-architect~~ — **fatto** (manifest/builder/discovery + 2 bin CLI, smoke-test ok).
 3. Shim config `HENAXAI_* <- SKYLLAM_* <- HENAXARCHITECT_AI_*` (già nel client) + script migrazione dati cache/log.
 4. Refactor `henax-architect` (UI grafo) e `skyllam` (chat) per consumare henax-ai.
