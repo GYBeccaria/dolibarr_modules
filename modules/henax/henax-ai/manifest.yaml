@@ -1,0 +1,62 @@
+# henax-ai — manifest source-of-truth (genera README + architect.json + skyllam.json)
+meta:
+  name: henax-ai
+  display_name: Henax AI
+  module_id: 580420
+  version: 1.0.0-alpha
+  status: scaffold
+  category: platform
+  layer: L0
+  namespace: henax
+  owner: P2G Connecto
+
+business:
+  short_description: >
+    Libreria di piattaforma: un client LLM multi-provider, un manifest engine e la discovery
+    dell'architettura. Consolida skyllam (client) e henax-architect (service AI / manifest).
+  capabilities:
+    - henaxai_chat(): client LLM unico (openai / openai-compatible / ollama / anythingllm / anthropic-nativo)
+    - henaxai_call(): orchestratore con cache + log + rate-limit + context builder iniettabile
+    - manifest engine: manifest.yaml -> README + architect.json + skyllam.json (+ validator)
+    - discovery: grafo architettura {nodes, edges}
+
+dependencies:
+  hard: []          # L0: nessuna dipendenza verso l'alto
+  soft:             # opzionali, risolte a runtime via function_exists
+    - domicare      # domicare_resolve_openai_key (key resolution storica)
+    - henax-inner-help  # repo map per nodi grafo
+
+# provides[]: capability/hook esposti ai moduli che consumano henax-ai
+provides:
+  - capability: llm.chat
+  - capability: llm.call_cached
+  - capability: manifest.engine
+  - capability: discovery.graph
+
+skyllam:        # superficie AI-queryable (vuota: L0 non ha entità di dominio)
+  entities: []
+  stats:
+    - key: henaxai_queries_today
+      label: Query AI oggi
+      sql: "SELECT COUNT(*) FROM llx_henaxai_log WHERE cache_hit = 0 AND datec >= '{today}'"
+
+architect:
+  tables:
+    - llx_henaxai_cache
+    - llx_henaxai_log
+  rights:
+    580421: { label: "Interrogare l'AI", assignment: user }
+    580422: { label: "Gestire manifest/discovery", assignment: admin }
+  integrations:
+    - target: anthropic
+      kind: llm_provider
+      purpose: "Messages API /v1/messages (path nativo nuovo)"
+    - target: openai
+      kind: llm_provider
+      purpose: "chat/completions (+ openai-compatible)"
+
+doc_links:
+  - title: Design henax-ai
+    path: ../../../design/henax-ai.md
+  - title: Contratto interoperabilità
+    path: ../../../INTEROP.md
