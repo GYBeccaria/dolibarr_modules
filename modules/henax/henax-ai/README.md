@@ -12,8 +12,10 @@ Consolida `skyllam` (client) e `henax-architect` (service AI / manifest / discov
 | `core/modules/modHenaxAi.class.php` | descrittore (ID 580420, const HENAXAI_*, tabelle cache/log) — completo |
 | `lib/henaxai_client.lib.php` | client multi-provider, **incluso ramo Anthropic-nativo nuovo** — funzionale, base |
 | `lib/henaxai_service.lib.php` | cache + log + rate-limit + orchestratore — portato da architect_ai — funzionale |
-| `lib/henaxai_manifest.lib.php` | **PORTING STUB** — da portare 1:1 da architect (engine maturo) |
-| `lib/henaxai_discovery.lib.php` | da portare da architect_discovery — TODO |
+| `lib/henaxai_manifest.lib.php` | loader + validator + `extract_skyllam_block` (superficie AI-queryable) — **portato da architect, smoke-test ok su architect.json reale** |
+| `lib/vendor/{toml_parser,Spyc}.php` | vendor del manifest engine (toml entry rinominata) |
+| `lib/henaxai_manifest_builder.lib.php` | builder `manifest.yaml`→README/json — da portare (architect_manifest_builder, 538 righe) — TODO |
+| `lib/henaxai_discovery.lib.php` | grafo architettura — da portare (architect_discovery, 765 righe) — TODO |
 | `sql/llx_henaxai_cache.sql` `sql/llx_henaxai_log.sql` | tabelle tecniche, nomi sanati (no trattino) |
 | `manifest.yaml` | source-of-truth (genera README/architect.json/skyllam.json) |
 
