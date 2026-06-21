@@ -1,0 +1,25 @@
+# PHPStan — integrità simboli whole-program per il modulo henax-ai.
+# Vedi TOOLING.md §4.1. I path assoluti sono SPECIFICI DI QUESTA VM:
+#   <DOL_CORE> = /opt/p2g_dev/dolibarr/var/www/html   (Dolibarr 20.0.4 su disco)
+#   <MODULE>   = /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai
+# Su un'altra macchina: aggiornare i path, NON la struttura.
+# Lancio: ./vendor/bin/phpstan analyse -c phpstan-henaxai.neon --no-progress
+parameters:
+    level: 0
+    phpVersion: 80300
+    paths:
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/core
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_client.lib.php
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_service.lib.php
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_manifest.lib.php
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_manifest_builder.lib.php
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_discovery.lib.php
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/bin
+    scanDirectories:
+        - /opt/p2g_dev/dolibarr/var/www/html/core/lib
+        - /opt/p2g_dev/dolibarr/var/www/html/core/class
+        - /opt/p2g_dev/dolibarr/var/www/html/core/modules
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/vendor
+    scanFiles:
+        - /opt/p2g_dev/dolibarr/var/www/html/main.inc.php
+    reportUnmatchedIgnoredErrors: false

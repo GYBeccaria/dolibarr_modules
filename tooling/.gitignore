@@ -1,0 +1,3 @@
+# I config sono versionati; le dipendenze installate no.
+/vendor/
+/composer.lock

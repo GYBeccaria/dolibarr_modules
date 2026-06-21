@@ -1,0 +1,9 @@
+{
+  "name": "p2g/rationalization-tooling",
+  "description": "Analizzatori statici per la razionalizzazione moduli henax/domicare. Vedi TOOLING.md.",
+  "require-dev": {
+    "phpstan/phpstan": "^2.0",
+    "deptrac/deptrac": "^3.0"
+  },
+  "config": { "allow-plugins": {} }
+}
