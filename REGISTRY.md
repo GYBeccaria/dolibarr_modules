@@ -10,6 +10,11 @@ Range ID per namespace (no collisioni). Il blocco henax è ampio perché i modul
 
 > ⚠️ Regola tabelle (vedi NAMING §4): prefisso tabella = nome modulo SENZA trattini → `henax-ai` ⇒ `llx_henaxai_*`. Il `henax-architect` attuale viola la regola (`llx_henax-architect_*`, trattino nel nome tabella) e va sanato nella migrazione.
 
+## Base platform (core)
+| componente | repo | note |
+|---|---|---|
+| **henaxis-base** | [GYBeccaria/henaxis-base](https://github.com/GYBeccaria/henaxis-base) | Dolibarr ufficiale **pinnato `22.0.3`** + branding + override core + `web-init.sh`. NON c'è fork del core: si stratifica sopra l'immagine ufficiale. I moduli (sotto) si montano su questa base. |
+
 ## L0 — librerie piattaforma (target da consolidamento)
 
 | target | ID | nasce da | stato | note |
