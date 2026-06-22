@@ -211,5 +211,39 @@ Finché non c'è, le verifiche su quei moduli sono "smoke-test con stub" (vedi �
 | Accoppiamento procedurale + grafo architettura | `henaxai_discovery` (in henax-ai) |
 | Schema/FK/ID reali (read-only) | DB mba via docker exec (§3) |
 | Verifica runtime end-to-end moduli | istanza usa-e-getta (§6, da allestire) |
+| Test E2E browser della UI | Playwright + Chromium (§9) |
 | PR / cross-repo GitHub | `gh` |
 | Doc Dolibarr API/wiki | WebFetch/WebSearch |
+
+---
+
+## 9. Playwright + Chromium — test E2E della UI (parte stabile dei tools)
+Test browser end-to-end delle pagine UI (admin/setup) contro l'istanza dev usa-e-getta (§6).
+Installato in `<WORKSPACE>/.tooling/e2e/` (template versionati in `tooling/e2e/`).
+
+Install (portabile):
+```bash
+cd <WORKSPACE>/.tooling/e2e
+npm install            # @playwright/test
+npx playwright install chromium   # scarica il browser (~114MB) in ~/.cache/ms-playwright
+# se il launch fallisce per librerie di sistema mancanti: npx playwright install --with-deps chromium (richiede root)
+```
+Lancio (l'istanza dev deve essere su, §6):
+```bash
+npx playwright test --reporter=list
+# override target: HENAXAI_BASE_URL=http://host:port  credenziali: HENAXAI_ADMIN / HENAXAI_PASS
+```
+Struttura: `playwright.config.ts` (baseURL `localhost:9199`, headless, screenshot on-failure),
+`tests/henaxai-setup.spec.ts`.
+
+**Esito verificato**: il test di render passa in Chromium reale (login admin → `setup.php` →
+tutti i provider + controlli Salva/Valida visibili).
+
+> ⚠️ **CSRF Dolibarr e POST di form in automazione.** Dolibarr protegge i POST con un token
+> CSRF a rotazione (`MAIN_SECURITY_CSRF_WITH_TOKEN`): in automazione il POST di un form viene
+> rifiutato e l'`action` **silenziosamente annullata** (main.inc.php "disable POST parameters").
+> Quindi il flusso *save→validate* via browser non è deterministico col CSRF attivo. Il test
+> relativo è **skippato di default** (gate `HENAXAI_E2E_FULL=1`). Per eseguirlo serve rilassare
+> il CSRF **sulla sola istanza dev sacrificabile** (mai in produzione) — decisione dell'utente,
+> non da fare in autonomia (è un indebolimento di sicurezza). Il codice della pagina resta
+> production-correct (usa `newToken()`); il render-test E2E copre comunque la UI.

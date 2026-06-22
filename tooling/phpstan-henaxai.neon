@@ -14,6 +14,8 @@ parameters:
         - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_manifest.lib.php
         - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_manifest_builder.lib.php
         - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_discovery.lib.php
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/lib/henaxai_probe.lib.php
+        - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/admin
         - /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai/bin
     scanDirectories:
         - /opt/p2g_dev/dolibarr/var/www/html/core/lib
