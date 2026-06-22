@@ -20,7 +20,7 @@ require_once DOL_DOCUMENT_ROOT.'/custom/henax-ai/lib/henaxai_probe.lib.php';
 global $db, $conf, $user, $langs;
 if (empty($user->admin)) accessforbidden();
 
-$action = GETPOST('action', 'az');
+$action = GETPOST('action', 'aZ09');
 $registry = henaxai_provider_registry();
 
 /* ---------------- Azioni ---------------- */
@@ -40,7 +40,7 @@ if ($action === 'save') {
         else dolibarr_del_const($db, 'HENAXAI_BASE_'.$P, $conf->entity);
     }
     // Provider attivo + modello
-    $active = GETPOST('active_provider', 'az');
+    $active = GETPOST('active_provider', 'aZ09');
     if ($active !== '' && isset($registry[$active])) dolibarr_set_const($db, 'HENAXAI_PROVIDER', $active, 'chaine', 0, '', $conf->entity);
     $model = GETPOST('active_model', 'restricthtml');
     if ($model !== '') dolibarr_set_const($db, 'HENAXAI_MODEL', trim($model), 'chaine', 0, '', $conf->entity);

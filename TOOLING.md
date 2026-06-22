@@ -236,14 +236,16 @@ npx playwright test --reporter=list
 Struttura: `playwright.config.ts` (baseURL `localhost:9199`, headless, screenshot on-failure),
 `tests/henaxai-setup.spec.ts`.
 
-**Esito verificato**: il test di render passa in Chromium reale (login admin → `setup.php` →
-tutti i provider + controlli Salva/Valida visibili).
+**Esito verificato**: entrambi i test passano in Chromium reale, deterministici (login admin →
+`setup.php` → render con tutti i provider; poi salva una key → valida → matrice "Esito validazione").
+Il form POST porta il token `newToken()` che Playwright invia con la submit: **funziona senza
+rilassare nulla**.
 
-> ⚠️ **CSRF Dolibarr e POST di form in automazione.** Dolibarr protegge i POST con un token
-> CSRF a rotazione (`MAIN_SECURITY_CSRF_WITH_TOKEN`): in automazione il POST di un form viene
-> rifiutato e l'`action` **silenziosamente annullata** (main.inc.php "disable POST parameters").
-> Quindi il flusso *save→validate* via browser non è deterministico col CSRF attivo. Il test
-> relativo è **skippato di default** (gate `HENAXAI_E2E_FULL=1`). Per eseguirlo serve rilassare
-> il CSRF **sulla sola istanza dev sacrificabile** (mai in produzione) — decisione dell'utente,
-> non da fare in autonomia (è un indebolimento di sicurezza). Il codice della pagina resta
-> production-correct (usa `newToken()`); il render-test E2E copre comunque la UI.
+> 🐛 **Lezione (caso reale).** All'inizio i POST del form non eseguivano l'`action` e l'avevo
+> erroneamente attribuito al CSRF (stavo per disattivarlo sul dev — fermato, giustamente, dal
+> classificatore di sicurezza). La causa vera era un **filtro `GETPOST` invalido**:
+> `GETPOST('action','az')` — `'az'` NON è un filtro Dolibarr valido (esistono `aZ`, `aZ09`,
+> `alphanohtml`, …), quindi l'action veniva scartata silenziosamente (rompeva sia *save* sia
+> *validate*). Fix sistemico: `GETPOST('action','aZ09')`. Morale: indagare fino alla causa
+> radice, **mai** workaround che indeboliscono la sicurezza; e diffidare delle diagnosi comode.
+> Verifica empirica della causa: `MAIN_SECURITY_CSRF_WITH_TOKEN` non era nemmeno settata.
