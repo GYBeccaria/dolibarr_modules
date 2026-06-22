@@ -12,7 +12,7 @@ Questo repo **non** è più uno stash di moduli: è il **registro di governo** d
 vendor/            moduli di terzi (arubasdi, efattita, tawkto, dolibarrassistant)
 modules/henax/     moduli orizzontali riusabili (popolamento progressivo)
 modules/domicare/  verticale Domicare
-<top-level>        moduli nostri ancora da ricollocare (b2border, b2cstore, helpchat, diagnosi_digitale, industria40, lrid)
+<top-level>        moduli nostri ancora da ricollocare (b2border, b2cstore, helpchat, diagnosi_digitale, industria40)
 ```
 
 ## Stato

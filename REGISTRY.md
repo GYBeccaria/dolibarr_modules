@@ -69,7 +69,7 @@ Range ID per namespace (no collisioni). Il blocco henax è ampio perché i modul
 `arubasdi` (Linx srl, SDI) · `efattita` (Linx srl) · `tawkto` · `dolibarrassistant`
 
 ## ⚠️ Conflitti ID rilevati
-- **500000** usato sia da `domicare` sia da `lrid` → collisione: riassegnare uno (lrid è L1/`henax-*` o verticale LRID? → da-decidere).
+- ✅ **500000 — RISOLTO**: `lrid` era uno scaffold modulebuilder vuoto (mai sviluppato, 0 tabelle, nessun riferimento esterno) → **rimosso**. `domicare` mantiene 500000. La vertical LRID vive nei repo `lrid-edge`/`lrid-infrastructure`, non come modulo Dolibarr.
 - `henax-admin` 104858, `industria40` 100000, `addresscorrector` 550000: fuori dai range namespace → riassegnare.
 - `b2cstore` 580400 entra nel range henax ma coincide col blocco: riassegnare.
 
@@ -79,4 +79,4 @@ Range ID per namespace (no collisioni). Il blocco henax è ampio perché i modul
 3. Estrarre `domicare-rendicontazione`, `domicare-compliance`, `henax-ops` (basso accoppiamento).
 4. Archiviare `domihcp-be`, `domihcp-fe`, `Dolibarr-toolkit`.
 5. Rinomini di naming (henaxfse→henax-fse, henaxisanalytics→henax-analytics, addresscorrector→henax-geo) e sanazione nomi tabella col trattino.
-6. Riassegnare gli ID in conflitto (500000 domicare↔lrid per primo).
+6. Riassegnare gli ID in conflitto rimanenti: `henax-admin` 104858, `industria40` 100000, `addresscorrector` 550000, `b2cstore` 580400. (✅ 500000 domicare↔lrid risolto: scaffold `lrid` rimosso.)
