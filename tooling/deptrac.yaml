@@ -1,0 +1,33 @@
+# Deptrac — confini di layer INTEROP L0/L1/L2. Vedi TOOLING.md §4.2.
+# Limite: deptrac segue codice class-based (use/new/extends); l'accoppiamento
+# procedurale Dolibarr (require_once) e' coperto da henaxai_discovery, non qui.
+# Tenere lo scope leggero: NON includere l'intero Domicare (enorme, rallenta).
+# Lancio: ./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress
+parameters:
+  paths:
+    - /opt/p2g_dev/dolibarr_modules/modules
+    - /opt/p2g_dev/henax-architect
+    - /opt/p2g_dev/matrixchat
+  exclude_files:
+    - '#.*/lib/phpqrcode/.*#'   # vendor (rumore)
+    - '#.*/vendor/.*#'
+  layers:
+    - name: L0
+      collectors:
+        - type: directory
+          value: '.*/modules/henax/henax-ai/.*'
+    - name: L1
+      collectors:
+        - type: directory
+          value: '.*/(henax-architect|matrixchat)/.*'
+    - name: L2
+      collectors:
+        - type: directory
+          value: '.*/(Domicare)/.*'
+  ruleset:
+    L2:
+      - L1
+      - L0
+    L1:
+      - L0
+    L0: ~

@@ -1,27 +1,19 @@
-# DOLIBARR ERP & CRM custom directory for external modules
+# dolibarr_modules — registro di razionalizzazione moduli Henax / Domicare
 
-This directory is dedicated to store external modules.
-To use it, just copy here the directory of the module into this directory.
+Questo repo **non** è più uno stash di moduli: è il **registro di governo** della piattaforma.
 
-Note: On linux or MAC systems, it is better to unzip/store the external module directory into
-a different place than this directory and just adding a symbolic link here to the htdocs directory
-of the module.
+## Documenti
+- **[REGISTRY.md](REGISTRY.md)** — fonte unica di verità: ogni modulo, stato attuale → target, ID, dipendenze, conflitti.
+- **[NAMING.md](NAMING.md)** — convenzione di naming e namespace (`henax-*`, `domicare-*`, `henaxis-*`, `vendor/*`).
+- **[INTEROP.md](INTEROP.md)** — contratto di interoperabilità: livelli L0/L1/L2, hook+manifest, confini dati.
 
-For example on Linux OS: Get the module from the command
-
-`mkdir ~/git; cd ~/git`
-
-`git clone https://git.framasoft.org/p/newmodule/newmodule.git`
-
-Then create the symbolic link
-
-`ln -fs ~/git/newmodule/htdocs /path_to_dolibarr/htdocs/custom/newmodule`
-
-WARNING !!!
-Check also that the /custom directory is active by adding into dolibarr `conf/conf.php` file the following
-two lines, so dolibarr will also scan /custom directory to find external external modules:
-
-```php
-$dolibarr_main_url_root_alt='/custom';
-$dolibarr_main_document_root_alt='/path_to_dolibarr/htdocs/custom/';
+## Struttura
 ```
+vendor/            moduli di terzi (arubasdi, efattita, tawkto, dolibarrassistant)
+modules/henax/     moduli orizzontali riusabili (popolamento progressivo)
+modules/domicare/  verticale Domicare
+<top-level>        moduli nostri ancora da ricollocare (b2border, b2cstore, helpchat, diagnosi_digitale, industria40, lrid)
+```
+
+## Stato
+Bootstrap iniziale: classificazione + 3 documenti di governo. La migrazione effettiva dei moduli avviene per passi, guidata da REGISTRY.md (vedi §"azioni immediate").

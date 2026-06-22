@@ -1,0 +1,6 @@
+# Config versionati; dipendenze e artefatti no.
+/node_modules/
+/test-results/
+/playwright-report/
+/results.json
+package-lock.json

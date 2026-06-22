@@ -1,0 +1,1 @@
+/opt/p2g_dev/henaxis-playbook/shared/CLAUDE-core.md
