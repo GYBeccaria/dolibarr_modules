@@ -160,7 +160,13 @@ parameters:
 > sotto-rileva l'accoppiamento procedurale. Per quel pezzo la **fonte di verità è
 > `henaxai_discovery`** (il grafo da manifest/descriptor che abbiamo portato in henax-ai):
 > deptrac è complementare, non sostitutivo. Tenere lo scope leggero (no `Domicare` intero:
-> è enorme e rallenta).
+> è enorme e rallenta). `exclude_files` toglie il rumore vendor (es. `lib/phpqrcode`).
+
+**Esito verificato** (henax-ai + henax-architect + matrixchat): **0 violazioni** di layering.
+Con `--report-uncovered` deptrac ha però segnalato un dato reale: `architect_ai_call() →
+SkyllamLlm` (fallback legacy in `architect_ai.lib.php:330`) — un accoppiamento **L1→L1 per
+classe** vietato da INTEROP, residuo del percorso pre-henax-ai. Da rimuovere nel cutover
+(rimozione codice AI legacy). Esempio di deptrac che fa emergere uno smell architetturale reale.
 
 ---
 

@@ -8,6 +8,9 @@ parameters:
     - /opt/p2g_dev/dolibarr_modules/modules
     - /opt/p2g_dev/henax-architect
     - /opt/p2g_dev/matrixchat
+  exclude_files:
+    - '#.*/lib/phpqrcode/.*#'   # vendor (rumore)
+    - '#.*/vendor/.*#'
   layers:
     - name: L0
       collectors:
