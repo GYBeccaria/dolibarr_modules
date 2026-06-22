@@ -19,8 +19,8 @@ Range ID per namespace (no collisioni). Il blocco henax è ampio perché i modul
 
 | target | ID | nasce da | stato | note |
 |---|---|---|---|---|
-| `henax-ai` (lib) | 580420 | **client**: `skyllam_llm` (openai-compatible) **+ path Anthropic-nativo NUOVO** · **service**: `architect_ai` (cache/log/rate-limit) · **manifest engine**: `architect_manifest*` (builder/validator/discovery) | da-fondere | UN client LLM multi-provider + UN manifest engine. Vedi `design/henax-ai.md`. La convergenza odierna è nominale (`architect_ai_call_via_skyllam` è pass-through); il consolidamento è reale. `skyllam_manifest` diventa consumer. Tabelle tecniche `llx_henaxai_cache`/`_log`. |
-| `henax-docflow` (engine) | 580430 | core estratto da `domicare/ocr`+`visionai` e `industria40/async_ai_processor`+`export_to_docx` | da-estrarre→L1 | **capability orizzontale** ingest→OCR/estrazione→classify→output(DB+documento). Core L1, renderer/adapter L2 (FSE-CDA, DOCX-template). Gira su `henax-ai`. Vedi `design/henax-docflow.md`. |
+| `henax-ai` (lib) | 580420 | **client**: `skyllam_llm` (openai-compatible) **+ path Anthropic-nativo NUOVO** · **service**: `architect_ai` (cache/log/rate-limit) · **manifest engine**: `architect_manifest*` (builder/validator/discovery) | da-fondere | UN client LLM multi-provider + UN manifest engine. Vedi `docs/tech/henax-ai.md`. La convergenza odierna è nominale (`architect_ai_call_via_skyllam` è pass-through); il consolidamento è reale. `skyllam_manifest` diventa consumer. Tabelle tecniche `llx_henaxai_cache`/`_log`. |
+| `henax-docflow` (engine) | 580430 | core estratto da `domicare/ocr`+`visionai` e `industria40/async_ai_processor`+`export_to_docx` | da-estrarre→L1 | **capability orizzontale** ingest→OCR/estrazione→classify→output(DB+documento). Core L1, renderer/adapter L2 (FSE-CDA, DOCX-template). Gira su `henax-ai`. Vedi `docs/tech/henax-docflow.md`. |
 | `henax-chat` (trasporto) | 580410 | `matrixchat` | attivo→promuovere | trasporto Matrix unico (room/user/message). |
 | `henax-export` (engine) | 580450 | `henaxexport` | attivo→promuovere | motore export CSV/JSON riusabile. |
 
@@ -74,8 +74,8 @@ Range ID per namespace (no collisioni). Il blocco henax è ampio perché i modul
 - `b2cstore` 580400 entra nel range henax ma coincide col blocco: riassegnare.
 
 ## Legenda azioni immediate consigliate (ordine)
-1. **Consolidare `henax-ai` (L0)** da architect_ai (service) + skyllam_llm (client) + path Anthropic-nativo nuovo + manifest engine di architect. È il perno comune a tutto: AI, interoperabilità (manifest), e la pipeline documentale ci girano sopra. Vedi `design/henax-ai.md`.
-2. **Estrarre `henax-docflow` (L1)** validando il pattern core+adapter su un pilota (domicare omogeneo vs industria40 eterogeneo — da decidere). Vedi `design/henax-docflow.md`.
+1. **Consolidare `henax-ai` (L0)** da architect_ai (service) + skyllam_llm (client) + path Anthropic-nativo nuovo + manifest engine di architect. È il perno comune a tutto: AI, interoperabilità (manifest), e la pipeline documentale ci girano sopra. Vedi `docs/tech/henax-ai.md`.
+2. **Estrarre `henax-docflow` (L1)** validando il pattern core+adapter su un pilota (domicare omogeneo vs industria40 eterogeneo — da decidere). Vedi `docs/tech/henax-docflow.md`.
 3. Estrarre `domicare-rendicontazione`, `domicare-compliance`, `henax-ops` (basso accoppiamento).
 4. Archiviare `domihcp-be`, `domihcp-fe`, `Dolibarr-toolkit`.
 5. Rinomini di naming (henaxfse→henax-fse, henaxisanalytics→henax-analytics, addresscorrector→henax-geo) e sanazione nomi tabella col trattino.

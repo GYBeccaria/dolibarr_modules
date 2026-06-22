@@ -39,7 +39,7 @@ class modHenaxAi extends DolibarrModules
         // Pagina di configurazione (setup + validazione provider/API key).
         $this->config_page_url = array("setup.php@henax-ai");
 
-        // Costanti config unificate HENAXAI_* (vedi design/henax-ai.md).
+        // Costanti config unificate HENAXAI_* (vedi docs/tech/henax-ai.md).
         $this->const = array(
             array('HENAXAI_PROVIDER',      'chaine', 'openai',       'Provider LLM di default', 1, 'current'),
             array('HENAXAI_MODEL',         'chaine', 'gpt-4o-mini',  'Modello di default (anthropic: claude-opus-4-8)', 1, 'current'),
