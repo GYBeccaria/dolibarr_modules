@@ -58,6 +58,6 @@ architect:
 
 doc_links:
   - title: Design henax-ai
-    path: ../../../design/henax-ai.md
+    path: ../../../docs/tech/henax-ai.md
   - title: Contratto interoperabilità
     path: ../../../INTEROP.md

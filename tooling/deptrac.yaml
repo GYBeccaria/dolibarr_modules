@@ -1,4 +1,4 @@
-# Deptrac — confini di layer INTEROP L0/L1/L2. Vedi TOOLING.md §4.2.
+# Deptrac — confini di layer INTEROP L0/L1/L2. Vedi docs/tech/TOOLING.md §4.2.
 # Limite: deptrac segue codice class-based (use/new/extends); l'accoppiamento
 # procedurale Dolibarr (require_once) e' coperto da henaxai_discovery, non qui.
 # Tenere lo scope leggero: NON includere l'intero Domicare (enorme, rallenta).

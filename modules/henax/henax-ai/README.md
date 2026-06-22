@@ -4,7 +4,7 @@ Libreria di piattaforma Henaxis. **UN client LLM multi-provider + UN manifest en
 Consolida `skyllam` (client) e `henax-architect` (service AI / manifest / discovery).
 
 > ⚠️ **Scaffold, non production.** Niente Dolibarr runtime in questa VM: il codice è strutturato e
-> verificato per coerenza, non eseguito. Vedi `design/henax-ai.md` per design completo e ordine di migrazione.
+> verificato per coerenza, non eseguito. Vedi `docs/tech/henax-ai.md` per design completo e ordine di migrazione.
 
 ## Stato dei pezzi
 | File | Stato |
@@ -46,7 +46,7 @@ provider+key in modo non distruttivo (endpoint list-models/auth): distingue
 e vede la matrice provider→{autentica?, modelli, latenza}, poi seleziona il provider attivo.
 Verificato live (14 provider; openrouter ha tornato 340 modelli con `/models` pubblico; UI resa nell'istanza dev).
 
-## TODO migrazione (sintesi — dettaglio in design/henax-ai.md)
+## TODO migrazione (sintesi — dettaglio in docs/tech/henax-ai.md)
 1. ~~Completare il mapping tool_use/tool_result per Anthropic~~ — **fatto** (assistant.tool_calls→tool_use, role tool→tool_result; verificato).
 2. ~~Portare manifest engine + discovery da henax-architect~~ — **fatto** (manifest/builder/discovery + 2 bin CLI, smoke-test ok).
 3. Shim config `HENAXAI_* <- SKYLLAM_* <- HENAXARCHITECT_AI_*` (già nel client) + script migrazione dati cache/log.

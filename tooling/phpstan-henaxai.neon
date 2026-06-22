@@ -1,5 +1,5 @@
 # PHPStan — integrità simboli whole-program per il modulo henax-ai.
-# Vedi TOOLING.md §4.1. I path assoluti sono SPECIFICI DI QUESTA VM:
+# Vedi docs/tech/TOOLING.md §4.1. I path assoluti sono SPECIFICI DI QUESTA VM:
 #   <DOL_CORE> = /opt/p2g_dev/dolibarr/var/www/html   (Dolibarr 20.0.4 su disco)
 #   <MODULE>   = /opt/p2g_dev/dolibarr_modules/modules/henax/henax-ai
 # Su un'altra macchina: aggiornare i path, NON la struttura.
