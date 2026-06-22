@@ -31,12 +31,20 @@ $r = henaxai_chat([['role'=>'user','content'=>'...']], ['provider'=>'anthropic',
 $r = henaxai_call($db, $question, ['fk_user'=>$user->id, 'scope'=>'docflow'], function() { return $contextoDocumento; });
 ```
 
-## Stadio di validazione provider+API key (`henaxai_probe.lib.php`)
+## Provider supportati (`henaxai_provider_registry()`)
+14 provider, fonte unica condivisa client+probe. Quasi tutti OpenAI-compatible (cambia la base URL):
+`openai`, `gemini`, `perplexity`, `qwen` (DashScope), `glm` (z.ai/Zhipu), `mistral`, `groq`,
+`deepseek`, `xai`, `openrouter`, `openai-compatible` (generico). `anthropic` = nativo. `ollama`/`anythingllm` = famiglie proprie.
+Config per-provider: `HENAXAI_KEY_<P>` / `HENAXAI_BASE_<P>` / `HENAXAI_MODEL_<P>` (base URL = default sovrascrivibile).
+
+## Stadio di validazione provider+API key (`henaxai_probe.lib.php` + UI)
 Il sistema non sa quale LLM usa il cliente → `henaxai_validate($opts)` testa una coppia
-provider+key in modo non distruttivo (endpoint "list models/auth"): distingue
-**autenticato / key rifiutata (401) / errore di rete**, ritorna i modelli esposti e la latenza.
-`henaxai_validate_candidates([...])` valida N candidati (stage di selezione). Provider:
-openai (+openai-compatible), anthropic (nativo), ollama, anythingllm. Verificato live.
+provider+key in modo non distruttivo (endpoint list-models/auth): distingue
+**autenticato / key rifiutata (401) / errore di rete / config da verificare**, ritorna i modelli esposti e la latenza.
+`henaxai_validate_candidates([...])` valida N candidati (stage di selezione).
+**UI**: `admin/setup.php` (link "configura" del modulo) — l'operatore inserisce le key, preme **Valida**
+e vede la matrice provider→{autentica?, modelli, latenza}, poi seleziona il provider attivo.
+Verificato live (14 provider; openrouter ha tornato 340 modelli con `/models` pubblico; UI resa nell'istanza dev).
 
 ## TODO migrazione (sintesi — dettaglio in design/henax-ai.md)
 1. ~~Completare il mapping tool_use/tool_result per Anthropic~~ — **fatto** (assistant.tool_calls→tool_use, role tool→tool_result; verificato).

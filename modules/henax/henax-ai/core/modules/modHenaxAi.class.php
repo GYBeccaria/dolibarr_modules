@@ -36,6 +36,9 @@ class modHenaxAi extends DolibarrModules
         // Solo hook (no trigger). Il consumo avviene via lib, non via classi interne.
         $this->module_parts = array('hooks' => array());
 
+        // Pagina di configurazione (setup + validazione provider/API key).
+        $this->config_page_url = array("setup.php@henax-ai");
+
         // Costanti config unificate HENAXAI_* (vedi design/henax-ai.md).
         $this->const = array(
             array('HENAXAI_PROVIDER',      'chaine', 'openai',       'Provider LLM di default', 1, 'current'),
