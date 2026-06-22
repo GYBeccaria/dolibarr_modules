@@ -8,121 +8,96 @@
  * Il sistema non puo' sapere quale LLM usa il cliente: serve poter TESTARE una
  * coppia provider+key (autentica? quali modelli espone? latenza?) in modo
  * NON distruttivo e indipendente dall'uso reale. Generalizza skyllam::detect()
- * e architect_ai_resolve_api_key().
+ * e architect_ai_resolve_api_key(). Usa il registry condiviso del client.
  *
  * API:
- *   henaxai_providers(): array                      // registry provider supportati
- *   henaxai_validate(array $opts): array            // valida UNA config provider+key
- *   henaxai_validate_candidates(array $cands): array // valida N candidati (stage selezione)
+ *   henaxai_providers(): array                        // = henaxai_provider_registry()
+ *   henaxai_validate(array $opts): array              // valida UNA config provider+key
+ *   henaxai_validate_candidates(array $cands): array  // valida N candidati (stage selezione)
  *
  * Esito henaxai_validate():
  *   ['ok'=>bool,            // richiesta completata (no errore di rete)
- *    'provider'=>str, 'model'=>str,
+ *    'provider'=>str, 'label'=>str, 'model'=>str,
  *    'authenticated'=>bool, // key accettata (no 401/403)
  *    'models'=>[str...],    // modelli esposti dal provider (se elencabili)
  *    'http_code'=>int, 'latency_ms'=>int, 'error'=>str|null]
  */
 
 if (!defined('DOL_DOCUMENT_ROOT')) die('Forbidden');
-require_once __DIR__.'/henaxai_client.lib.php';   // henaxai_resolve_config()
+require_once __DIR__.'/henaxai_client.lib.php';   // registry + henaxai_resolve_config()
 
-/**
- * Registry provider supportati + come si validano (endpoint "list models / auth", non distruttivo).
- */
+/** Elenco provider supportati (= registry del client). */
 function henaxai_providers(): array
 {
-    return array(
-        'openai' => array(
-            'label' => 'OpenAI',
-            'auth'  => 'bearer',
-            'models_url' => 'https://api.openai.com/v1/models', // override con endpoint custom (openai-compatible)
-            'native' => false,
-        ),
-        'anthropic' => array(
-            'label' => 'Anthropic (Claude)',
-            'auth'  => 'x-api-key',
-            'models_url' => 'https://api.anthropic.com/v1/models',
-            'native' => true, // path Messages API nativo
-        ),
-        'ollama' => array(
-            'label' => 'Ollama (locale/self-host)',
-            'auth'  => 'none',
-            'models_url' => '{endpoint}/api/tags',
-            'native' => false,
-        ),
-        'anythingllm' => array(
-            'label' => 'AnythingLLM',
-            'auth'  => 'bearer',
-            'models_url' => '{endpoint}/api/v1/system/check', // valida il token
-            'native' => false,
-        ),
-        // groq/mistral/altri = openai-compatible: provider 'openai' + HENAXAI_ENDPOINT_URL custom.
-    );
+    return henaxai_provider_registry();
 }
 
-/**
- * Valida UNA coppia provider+key. Non distruttiva: usa l'endpoint "list models / auth".
- */
+/** Deriva l'URL "list models / auth-check" non distruttivo per una config risolta. */
+function _henaxai_probe_url(array $cfg, array $def): string
+{
+    $base = rtrim($cfg['endpoint'] ?: $def['base'], '/');
+    switch ($def['family']) {
+        case 'anthropic':   return ($base ?: 'https://api.anthropic.com').'/v1/models';
+        case 'ollama':      return ($base ?: 'http://localhost:11434').'/api/tags';
+        case 'anythingllm': return $base.'/api/v1/system/check';
+        case 'openai':
+        default:            return ($base ?: 'https://api.openai.com/v1').'/models';
+    }
+}
+
+/** Valida UNA coppia provider+key (non distruttiva). */
 function henaxai_validate(array $opts): array
 {
     $cfg = henaxai_resolve_config($opts);
     $provider = $cfg['provider'];
-    $registry = henaxai_providers();
-    $base = array('ok' => false, 'provider' => $provider, 'model' => $cfg['model'],
-                  'authenticated' => false, 'models' => array(), 'http_code' => 0, 'latency_ms' => 0, 'error' => null);
+    $reg = henaxai_provider_registry();
+    $def = $reg[$provider] ?? null;
 
-    if (!isset($registry[$provider])) {
-        $base['error'] = "provider non supportato: $provider";
-        return $base;
-    }
-    $pr = $registry[$provider];
+    $out = array('ok' => false, 'provider' => $provider, 'label' => $def['label'] ?? $provider,
+                 'model' => $cfg['model'], 'authenticated' => false, 'models' => array(),
+                 'http_code' => 0, 'latency_ms' => 0, 'error' => null);
 
-    // Risolvi URL (endpoint custom per openai-compatible / ollama / anythingllm)
-    $url = $pr['models_url'];
-    if (strpos($url, '{endpoint}') !== false) {
-        $ep = rtrim($cfg['endpoint'] ?: ($provider === 'ollama' ? 'http://localhost:11434' : ''), '/');
-        if ($ep === '') { $base['error'] = "endpoint non configurato per $provider"; return $base; }
-        $url = str_replace('{endpoint}', $ep, $url);
-    } elseif ($provider === 'openai' && !empty($cfg['endpoint'])) {
-        $url = rtrim($cfg['endpoint'], '/').'/models'; // openai-compatible custom
+    if ($def === null) { $out['error'] = "provider non supportato: $provider"; return $out; }
+
+    $url = _henaxai_probe_url($cfg, $def);
+    if (strpos($url, '//') === false || preg_match('#^/?api/#', $url)) {
+        // base mancante per provider che la richiede (anythingllm/openai-compatible custom)
+        $out['error'] = "base URL non configurata per $provider"; return $out;
     }
 
-    // Header auth per provider
+    // Header auth per famiglia/auth
     $headers = array('Accept: application/json');
-    if ($pr['auth'] === 'bearer' && !empty($cfg['api_key'])) {
+    if ($def['auth'] === 'bearer' && $cfg['api_key'] !== '') {
         $headers[] = 'Authorization: Bearer '.$cfg['api_key'];
-    } elseif ($pr['auth'] === 'x-api-key') {
+    } elseif ($def['auth'] === 'x-api-key') {
         $headers[] = 'x-api-key: '.$cfg['api_key'];
         $headers[] = 'anthropic-version: 2023-06-01';
     }
 
-    [$code, $body, $err, $ms] = _henaxai_http_get($url, $headers, $provider === 'ollama');
-    $base['http_code'] = $code;
-    $base['latency_ms'] = $ms;
+    [$code, $body, $err, $ms] = _henaxai_http_get($url, $headers, $def['family'] === 'ollama');
+    $out['http_code'] = $code;
+    $out['latency_ms'] = $ms;
 
-    if ($err !== '') { $base['error'] = 'rete: '.$err; return $base; }
-    $base['ok'] = true;
+    if ($err !== '') { $out['error'] = 'rete: '.$err; return $out; }
+    $out['ok'] = true;
 
     if ($code === 401 || $code === 403) {
-        $base['authenticated'] = false;
-        $base['error'] = "key rifiutata (HTTP $code)";
-        return $base;
+        $out['error'] = "key rifiutata (HTTP $code)";
+        return $out;
     }
-    if ($code >= 400) {
-        $base['error'] = "HTTP $code";
-        return $base;
+    if ($code >= 200 && $code < 300) {
+        $out['authenticated'] = true;
+        $out['models'] = _henaxai_extract_models($def['family'], json_decode($body, true));
+        return $out;
     }
-
-    // 2xx: autenticato. Estrai modelli per provider.
-    $base['authenticated'] = true;
-    $j = json_decode($body, true);
-    $base['models'] = _henaxai_extract_models($provider, $j);
-    return $base;
+    // Altro codice: auth non confermata; quasi sempre base URL/endpoint o modello errati.
+    $out['error'] = "HTTP $code (verifica base URL/endpoint)";
+    return $out;
 }
 
 /**
- * Stage di selezione: valida N candidati e ritorna l'esito per ciascuno.
- * @param array $candidates  ['label' => $opts, ...]   (es. ['openai-prod'=>[...], 'claude'=>[...]])
+ * Stage di selezione: valida N candidati.
+ * @param array $candidates  ['label' => $opts, ...]  (es. ['openai'=>['provider'=>'openai','api_key'=>'sk-..'], ...])
  * @return array  ['label' => risultato henaxai_validate, ...]
  */
 function henaxai_validate_candidates(array $candidates): array
@@ -136,19 +111,19 @@ function henaxai_validate_candidates(array $candidates): array
 
 /* ---------- helpers ---------- */
 
-function _henaxai_extract_models(string $provider, $j): array
+function _henaxai_extract_models(string $family, $j): array
 {
     if (!is_array($j)) return array();
     $models = array();
-    switch ($provider) {
-        case 'openai':     // {data:[{id},...]}
+    switch ($family) {
+        case 'openai':     // {data:[{id},...]}  (vale anche per gemini/qwen/... openai-compat)
         case 'anthropic':  // {data:[{id},...]}
             foreach (($j['data'] ?? array()) as $m) { if (!empty($m['id'])) $models[] = $m['id']; }
             break;
         case 'ollama':     // {models:[{name},...]}
             foreach (($j['models'] ?? array()) as $m) { if (!empty($m['name'])) $models[] = $m['name']; }
             break;
-        // anythingllm /system/check non elenca modelli: lista vuota, ma authenticated=true e' sufficiente.
+        // anythingllm /system/check non elenca modelli (authenticated=true e' sufficiente)
     }
     return $models;
 }

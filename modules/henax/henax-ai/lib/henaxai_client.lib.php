@@ -18,26 +18,84 @@
  */
 
 /**
- * Risolve la configurazione effettiva (provider/model/key/endpoint) con shim sui legacy.
- * Precedenza: HENAXAI_* -> SKYLLAM_* -> HENAXARCHITECT_AI_* (migrazione).
+ * Registry provider supportati — fonte unica condivisa da client e probe.
+ * La maggior parte e' OpenAI-compatible (family 'openai'): cambia solo la base URL.
+ * Solo Anthropic e' davvero nativo. Le base URL sono DEFAULT best-effort: sempre
+ * sovrascrivibili per-provider (HENAXAI_BASE_<P>) o globale (HENAXAI_ENDPOINT_URL).
+ * La validazione (henaxai_validate) e' il modo per confermare empiricamente la config.
+ *
+ *  family: 'openai' | 'anthropic' | 'ollama' | 'anythingllm'
+ *  auth:   'bearer' | 'x-api-key' | 'none'
+ *  models: true se l'endpoint /models elenca i modelli
+ */
+function henaxai_provider_registry(): array
+{
+    return array(
+        'openai'      => array('label' => 'OpenAI',                 'family' => 'openai',      'base' => 'https://api.openai.com/v1',                              'auth' => 'bearer',    'models' => true),
+        'anthropic'   => array('label' => 'Anthropic (Claude)',     'family' => 'anthropic',   'base' => 'https://api.anthropic.com',                              'auth' => 'x-api-key', 'models' => true),
+        'gemini'      => array('label' => 'Google Gemini',          'family' => 'openai',      'base' => 'https://generativelanguage.googleapis.com/v1beta/openai', 'auth' => 'bearer',  'models' => true),
+        'perplexity'  => array('label' => 'Perplexity',             'family' => 'openai',      'base' => 'https://api.perplexity.ai',                              'auth' => 'bearer',    'models' => false),
+        'qwen'        => array('label' => 'Qwen (Alibaba DashScope)','family' => 'openai',     'base' => 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', 'auth' => 'bearer',   'models' => true),
+        'glm'         => array('label' => 'GLM / Zhipu (z.ai)',     'family' => 'openai',      'base' => 'https://api.z.ai/api/paas/v4',                           'auth' => 'bearer',    'models' => false),
+        'mistral'     => array('label' => 'Mistral',                'family' => 'openai',      'base' => 'https://api.mistral.ai/v1',                              'auth' => 'bearer',    'models' => true),
+        'groq'        => array('label' => 'Groq',                   'family' => 'openai',      'base' => 'https://api.groq.com/openai/v1',                         'auth' => 'bearer',    'models' => true),
+        'deepseek'    => array('label' => 'DeepSeek',               'family' => 'openai',      'base' => 'https://api.deepseek.com',                               'auth' => 'bearer',    'models' => true),
+        'xai'         => array('label' => 'xAI (Grok)',             'family' => 'openai',      'base' => 'https://api.x.ai/v1',                                    'auth' => 'bearer',    'models' => true),
+        'openrouter'  => array('label' => 'OpenRouter (aggregatore)','family' => 'openai',     'base' => 'https://openrouter.ai/api/v1',                           'auth' => 'bearer',    'models' => true),
+        'ollama'      => array('label' => 'Ollama (locale/self-host)','family' => 'ollama',    'base' => 'http://localhost:11434',                                 'auth' => 'none',      'models' => true),
+        'anythingllm' => array('label' => 'AnythingLLM',            'family' => 'anythingllm', 'base' => '',                                                       'auth' => 'bearer',    'models' => false),
+        'openai-compatible' => array('label' => 'Generico OpenAI-compatible', 'family' => 'openai', 'base' => '',                                                 'auth' => 'bearer',    'models' => true),
+    );
+}
+
+/** Normalizza un nome provider a suffisso costante (HENAXAI_KEY_<P>). */
+function henaxai_provider_const_suffix(string $provider): string
+{
+    return strtoupper(preg_replace('/[^a-z0-9]/i', '', $provider));
+}
+
+/**
+ * Risolve la configurazione effettiva (provider/family/model/key/endpoint).
+ * Per-provider: HENAXAI_KEY_<P> / HENAXAI_BASE_<P> / HENAXAI_MODEL_<P>.
+ * Shim legacy: SKYLLAM_* / HENAXARCHITECT_AI_*. Gli $opts espliciti hanno priorita'
+ * (anche api_key='' esplicito: serve a validare "nessuna key").
  */
 function henaxai_resolve_config(array $opts = array()): array
 {
     $provider = $opts['provider'] ?? getDolGlobalString('HENAXAI_PROVIDER',
         getDolGlobalString('SKYLLAM_LLM_PROVIDER',
         getDolGlobalString('HENAXARCHITECT_AI_PROVIDER', 'openai')));
-    $model = $opts['model'] ?? getDolGlobalString('HENAXAI_MODEL',
+
+    $reg = henaxai_provider_registry();
+    $def = $reg[$provider] ?? array('label' => $provider, 'family' => 'openai', 'base' => '', 'auth' => 'bearer', 'models' => true);
+    $P = henaxai_provider_const_suffix($provider);
+
+    // key: opts esplicito (anche '') -> per-provider const -> resolver legacy
+    if (array_key_exists('api_key', $opts)) {
+        $key = (string) $opts['api_key'];
+    } else {
+        $key = getDolGlobalString('HENAXAI_KEY_'.$P, '');
+        if ($key === '') $key = henaxai_resolve_api_key($provider);
+    }
+
+    // base/endpoint: opts -> per-provider const -> generico legacy -> default registry
+    if (array_key_exists('endpoint', $opts)) {
+        $endpoint = (string) $opts['endpoint'];
+    } else {
+        $endpoint = getDolGlobalString('HENAXAI_BASE_'.$P, '');
+        if ($endpoint === '') $endpoint = getDolGlobalString('HENAXAI_ENDPOINT_URL', getDolGlobalString('SKYLLAM_ENDPOINT_URL', ''));
+    }
+    if ($endpoint === '') $endpoint = $def['base'];
+
+    $model = $opts['model'] ?? getDolGlobalString('HENAXAI_MODEL_'.$P,
+        getDolGlobalString('HENAXAI_MODEL',
         getDolGlobalString('SKYLLAM_MODEL',
-        getDolGlobalString('HENAXARCHITECT_AI_MODEL', 'gpt-4o-mini')));
-    $endpoint = $opts['endpoint'] ?? getDolGlobalString('HENAXAI_ENDPOINT_URL',
-        getDolGlobalString('SKYLLAM_ENDPOINT_URL', ''));
-    $authType = $opts['auth_type'] ?? getDolGlobalString('HENAXAI_AUTH_TYPE',
-        getDolGlobalString('SKYLLAM_AUTH_TYPE', 'bearer'));
-    $key = $opts['api_key'] ?? henaxai_resolve_api_key($provider);
+        getDolGlobalString('HENAXARCHITECT_AI_MODEL', 'gpt-4o-mini'))));
+    $authType = $opts['auth_type'] ?? getDolGlobalString('HENAXAI_AUTH_TYPE', getDolGlobalString('SKYLLAM_AUTH_TYPE', $def['auth']));
 
     return array(
-        'provider' => $provider, 'model' => $model, 'endpoint' => $endpoint,
-        'auth_type' => $authType, 'api_key' => $key,
+        'provider' => $provider, 'family' => $def['family'], 'model' => $model,
+        'endpoint' => $endpoint, 'auth_type' => $authType, 'api_key' => $key,
         'temperature' => $opts['temperature'] ?? null,
         'max_tokens' => $opts['max_tokens'] ?? 1500,
         'system' => $opts['system'] ?? null,
@@ -85,15 +143,16 @@ function henaxai_chat(array $messages, array $opts = array())
     $cfg = henaxai_resolve_config($opts);
     $GLOBALS['henaxai_last_error'] = '';
 
-    switch ($cfg['provider']) {
+    switch ($cfg['family']) {
         case 'anthropic':
             return _henaxai_chat_anthropic($messages, $cfg);
         case 'anythingllm':
             return _henaxai_chat_anythingllm($messages, $cfg);
-        case 'openai':
         case 'ollama':
+        case 'openai':
         default:
-            return _henaxai_chat_openai($messages, $cfg);  // include openai-compatible (groq/mistral/custom)
+            // openai-compatible: openai, gemini, perplexity, qwen, glm, mistral, groq, deepseek, xai, openrouter, ollama
+            return _henaxai_chat_openai($messages, $cfg);
     }
 }
 
@@ -112,12 +171,12 @@ function _henaxai_chat_openai(array $messages, array $cfg)
         $payload['tool_choice'] = $cfg['tool_choice'];
     }
     $headers = array('Content-Type: application/json', 'Accept: application/json');
-    if (!empty($cfg['api_key']) && $cfg['provider'] !== 'ollama') {
+    if (!empty($cfg['api_key']) && $cfg['family'] !== 'ollama') {
         $headers[] = ($cfg['auth_type'] === 'basic')
             ? 'Authorization: Basic '.base64_encode($cfg['api_key'])
             : 'Authorization: Bearer '.$cfg['api_key'];
     }
-    $resp = _henaxai_curl($url, $headers, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $cfg['provider'] === 'ollama');
+    $resp = _henaxai_curl($url, $headers, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $cfg['family'] === 'ollama');
     if ($resp === false) return false;
     $j = json_decode($resp, true);
     if (!isset($j['choices'][0]['message'])) { $GLOBALS['henaxai_last_error'] = 'risposta openai non valida: '.substr($resp, 0, 300); return false; }
@@ -133,12 +192,12 @@ function _henaxai_chat_openai(array $messages, array $cfg)
 
 function _henaxai_openai_endpoint(array $cfg): string
 {
-    if ($cfg['provider'] === 'ollama') {
-        return rtrim($cfg['endpoint'] ?: 'http://localhost:11434', '/').'/v1/chat/completions';
+    $base = rtrim($cfg['endpoint'] ?: '', '/');
+    if ($cfg['family'] === 'ollama') {
+        return ($base ?: 'http://localhost:11434').'/v1/chat/completions';
     }
-    if (!empty($cfg['endpoint'])) {
-        return rtrim($cfg['endpoint'], '/').'/chat/completions';   // groq/mistral/custom
-    }
+    // base = base URL del provider (es. https://api.openai.com/v1, gemini openai-compat, ...)
+    if ($base !== '') return $base.'/chat/completions';
     return 'https://api.openai.com/v1/chat/completions';
 }
 
