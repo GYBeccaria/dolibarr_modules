@@ -2,7 +2,7 @@
 
 
 <!-- BEGIN SHARED (auto-generato da docs/CLAUDE-core.md, NON editare a mano) -->
-<!-- henaxis-playbook · shared core · version: 1.2 · last_review: 2026-06-22 -->
+<!-- henaxis-playbook · shared core · version: 1.3 · last_review: 2026-06-22 -->
 # Henaxis — convenzioni condivise (auto-caricate)
 
 > Blocco condiviso da **henaxis-playbook** (`shared/CLAUDE-core.md`), inserito automaticamente nel
@@ -26,6 +26,7 @@
 - Niente `git stash pop`/`merge`/`rebase` su path **bind-montati live** in produzione (AP-027).
 - Nei comandi shell usa `$VAR`, mai placeholder `<X>` (AP-031).
 - Fedeltà alla **fonte autoritativa**, bidirezionale (niente in più né in meno) (AP-038).
+- Per API/framework consulta le **fonti tecniche canoniche** (REFERENCES.md della playbook), non la memoria: versioni e API cambiano (AP-001/AP-028). Core Dolibarr pinnato **22.0.3**.
 
 ## Precedenza
 In caso di conflitto, **queste convenzioni condivise prevalgono** sul contenuto locale del
