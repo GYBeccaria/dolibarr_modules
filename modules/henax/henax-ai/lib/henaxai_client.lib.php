@@ -198,16 +198,57 @@ function _henaxai_chat_anthropic(array $messages, array $cfg)
     );
 }
 
-/** system separato; ruoli tool->user(tool_result). Versione base: TODO mapping tool_result completo. */
+/**
+ * Traduce i messaggi interni (stile OpenAI) -> Anthropic Messages API.
+ * - system: separato dal flusso messages.
+ * - assistant con tool_calls -> blocchi {text} + {tool_use, id, name, input}.
+ * - role 'tool' (tool result) -> user message con blocco {tool_result, tool_use_id, content}.
+ * Accetta tool_calls sia in formato OpenAI ({function:{name,arguments}}) sia interno ({name,arguments}).
+ */
 function _henaxai_to_anthropic_messages(array $messages, $explicitSystem): array
 {
     $system = is_string($explicitSystem) ? $explicitSystem : '';
     $out = array();
     foreach ($messages as $m) {
         $role = $m['role'] ?? 'user';
-        if ($role === 'system') { $system .= ($system ? "\n\n" : '').$m['content']; continue; }
-        if ($role === 'tool') { $role = 'user'; }  // tool_result va come user content block (mapping completo in TODO)
-        $out[] = array('role' => ($role === 'assistant' ? 'assistant' : 'user'), 'content' => is_string($m['content']) ? $m['content'] : json_encode($m['content']));
+        $content = $m['content'] ?? '';
+
+        if ($role === 'system') {
+            $system .= ($system ? "\n\n" : '').(is_string($content) ? $content : json_encode($content));
+            continue;
+        }
+
+        // Tool result -> user / tool_result block
+        if ($role === 'tool') {
+            $out[] = array('role' => 'user', 'content' => array(array(
+                'type'        => 'tool_result',
+                'tool_use_id' => $m['tool_call_id'] ?? ($m['id'] ?? ''),
+                'content'     => is_string($content) ? $content : json_encode($content),
+            )));
+            continue;
+        }
+
+        // Assistant con tool_calls -> text + tool_use blocks
+        if ($role === 'assistant' && !empty($m['tool_calls'])) {
+            $blocks = array();
+            if (is_string($content) && $content !== '') $blocks[] = array('type' => 'text', 'text' => $content);
+            foreach ($m['tool_calls'] as $tc) {
+                $name = $tc['function']['name'] ?? ($tc['name'] ?? '');
+                $argsRaw = $tc['function']['arguments'] ?? ($tc['arguments'] ?? array());
+                $input = is_string($argsRaw) ? (json_decode($argsRaw, true) ?: array()) : (array) $argsRaw;
+                $blocks[] = array(
+                    'type'  => 'tool_use',
+                    'id'    => $tc['id'] ?? '',
+                    'name'  => $name,
+                    'input' => empty($input) ? new stdClass() : $input,
+                );
+            }
+            $out[] = array('role' => 'assistant', 'content' => $blocks);
+            continue;
+        }
+
+        // Messaggio testuale semplice
+        $out[] = array('role' => ($role === 'assistant' ? 'assistant' : 'user'), 'content' => is_string($content) ? $content : json_encode($content));
     }
     return array($system, $out);
 }

@@ -30,6 +30,7 @@ dependencies:
 provides:
   - capability: llm.chat
   - capability: llm.call_cached
+  - capability: llm.validate     # stadio test/valutazione provider+API key (henaxai_probe)
   - capability: manifest.engine
   - capability: discovery.graph
 

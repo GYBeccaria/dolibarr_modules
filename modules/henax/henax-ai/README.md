@@ -31,8 +31,15 @@ $r = henaxai_chat([['role'=>'user','content'=>'...']], ['provider'=>'anthropic',
 $r = henaxai_call($db, $question, ['fk_user'=>$user->id, 'scope'=>'docflow'], function() { return $contextoDocumento; });
 ```
 
+## Stadio di validazione provider+API key (`henaxai_probe.lib.php`)
+Il sistema non sa quale LLM usa il cliente → `henaxai_validate($opts)` testa una coppia
+provider+key in modo non distruttivo (endpoint "list models/auth"): distingue
+**autenticato / key rifiutata (401) / errore di rete**, ritorna i modelli esposti e la latenza.
+`henaxai_validate_candidates([...])` valida N candidati (stage di selezione). Provider:
+openai (+openai-compatible), anthropic (nativo), ollama, anythingllm. Verificato live.
+
 ## TODO migrazione (sintesi — dettaglio in design/henax-ai.md)
-1. Completare il mapping tool_use/tool_result per Anthropic (oggi base).
+1. ~~Completare il mapping tool_use/tool_result per Anthropic~~ — **fatto** (assistant.tool_calls→tool_use, role tool→tool_result; verificato).
 2. ~~Portare manifest engine + discovery da henax-architect~~ — **fatto** (manifest/builder/discovery + 2 bin CLI, smoke-test ok).
 3. Shim config `HENAXAI_* <- SKYLLAM_* <- HENAXARCHITECT_AI_*` (già nel client) + script migrazione dati cache/log.
 4. Refactor consumer per usare `henaxai_chat()` — **avviato (additivo, con guard, reversibile)**, verificato nell'istanza dev:
