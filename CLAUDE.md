@@ -2,7 +2,7 @@
 
 
 <!-- BEGIN SHARED (auto-generato da docs/CLAUDE-core.md, NON editare a mano) -->
-<!-- henaxis-playbook · shared core · version: 1.6 · last_review: 2026-06-22 -->
+<!-- henaxis-playbook · shared core · version: 1.7 · last_review: 2026-06-22 -->
 # Henaxis — convenzioni condivise (auto-caricate)
 
 > Blocco condiviso da **henaxis-playbook** (`shared/CLAUDE-core.md`), inserito automaticamente nel
@@ -15,7 +15,7 @@ Hai **due corpi di conoscenza complementari**: usali **entrambi**, non sottovalu
   il nucleo auto-caricato; per esteso → repo **henaxis-playbook**: `PRINCIPLES`, `ANTIPATTERNS`,
   `COMMIT-CONVENTION`, `BRANCHING`, `TASK-CONTRACT`, `MANIFEST`, `SERENA`, `REFERENCES`.
 - **DOCS/ del repo (verticale = *cos'è questo modulo*)**: `docs/README` (mappa), `docs/decisions.md` (DD),
-  `docs/handoff/`, `docs/tech/` (note tecniche, PROD, integrazioni), `docs/CLAUDE-core.md` (symlink al playbook).
+  `docs/handoff/`, `docs/tech/` (note tecniche, PROD, integrazioni), `docs/CLAUDE-core.md` (copia vendorizzata del playbook).
 - **Codice reale → indice Serena** (`.serena/`, vedi `SERENA.md`): naviga simboli/riferimenti invece di leggere a tappeto.
 
 **Ordine a inizio sessione**: (1) questo blocco SHARED (regole) → (2) intro/scopo locale + sezioni tecniche del
