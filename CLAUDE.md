@@ -2,7 +2,7 @@
 
 
 <!-- BEGIN SHARED (auto-generato da docs/CLAUDE-core.md, NON editare a mano) -->
-<!-- henaxis-playbook · shared core · version: 1.7 · last_review: 2026-06-22 -->
+<!-- henaxis-playbook · shared core · version: 1.8 · last_review: 2026-06-22 -->
 # Henaxis — convenzioni condivise (auto-caricate)
 
 > Blocco condiviso da **henaxis-playbook** (`shared/CLAUDE-core.md`), inserito automaticamente nel
@@ -44,6 +44,7 @@ per le API, `TASK-CONTRACT` per delegare, `MANIFEST`/`SERENA` per capabilities e
 - Fedeltà alla **fonte autoritativa**, bidirezionale (niente in più né in meno) (AP-038).
 - Per API/framework consulta le **fonti tecniche canoniche** (REFERENCES.md della playbook), non la memoria: versioni e API cambiano (AP-001/AP-028). Core Dolibarr pinnato **22.0.3**.
 - **PROD/runtime è la fonte di verità** (`main` ≠ deployed): mai auto-sync/overwrite di PROD da un branch; deploy solo via wrapper autorizzato, per-intervento; il cleanup git non propaga a PROD (AP-040).
+- **News cross-sessione**: l'hook UserPromptSubmit ti inietta `news.json` del playbook prima di ogni risposta — leggila; quando fai qualcosa di rilevante per altre sessioni, postala con `tools/news.sh post`.
 - **Delega agentica solo con contratto** (TASK-CONTRACT.md): scope + tool whitelist + gate di verifica macchina + checkpoint. Autonomia per raggio d'impatto (reversibile→alta, PROD/dati→gate umano). L'agente non auto-dichiara "fatto" (AP-001/AP-041).
 
 ## Precedenza

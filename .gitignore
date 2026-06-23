@@ -1,0 +1,4 @@
+
+# Serena symbol cache (per-macchina, non versionata)
+.serena/cache/
+.claude/settings.local.json
