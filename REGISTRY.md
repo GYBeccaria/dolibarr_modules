@@ -63,6 +63,7 @@ Range ID per namespace (no collisioni). Il blocco henax è ampio perché i modul
 | `henaxis-mba` | `henaxis-frontend`, `henaxis_mbamutua`, `henaxis-mutua-docs` | attivo (cliente Mutua MBA) |
 | `sad` | `sad` (ID 580760) | attivo (Comune Reggio Calabria) — autonomo |
 | `hrmformazione` | `hrmformazione` (ID 580700, dep modHRM) | attivo — autonomo |
+| `henaxisddtfoto` | `henaxisddtfoto` (ID **501300**, dep Expedition/Facture/Commande/Product/Stock; usa L0 `henax-ai` per AI Vision) | **attivo/LIVE** (cliente panificio, `00192.henaxis.net`): foto DDT manoscritto → gpt-4o vision → DDT(Expedition)+Fattura+e-fattura. Manifest validato verde. |
 
 ## vendor/ (terzi, spostati)
 
@@ -72,6 +73,7 @@ Range ID per namespace (no collisioni). Il blocco henax è ampio perché i modul
 - **500000** usato sia da `domicare` sia da `lrid` → collisione: riassegnare uno (lrid è L1/`henax-*` o verticale LRID? → da-decidere).
 - `henax-admin` 104858, `industria40` 100000, `addresscorrector` 550000: fuori dai range namespace → riassegnare.
 - `b2cstore` 580400 entra nel range henax ma coincide col blocco: riassegnare.
+- `henaxisddtfoto` **501300** (cluster client 50xxxx, accanto a domicare 500000): **LIVE, ID occupato** — non riassegnare ora (AP-040: PROD=verità); eventuale renormalizzazione = intervento separato col cliente.
 
 ## Legenda azioni immediate consigliate (ordine)
 1. **Consolidare `henax-ai` (L0)** da architect_ai (service) + skyllam_llm (client) + path Anthropic-nativo nuovo + manifest engine di architect. È il perno comune a tutto: AI, interoperabilità (manifest), e la pipeline documentale ci girano sopra. Vedi `design/henax-ai.md`.
