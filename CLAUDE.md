@@ -2,7 +2,7 @@
 
 
 <!-- BEGIN SHARED (auto-generato da docs/CLAUDE-core.md, NON editare a mano) -->
-<!-- henaxis-playbook · shared core · version: 1.15 · last_review: 2026-07-02 -->
+<!-- henaxis-playbook · shared core · version: 1.16 · last_review: 2026-07-02 -->
 # Henaxis — convenzioni condivise (auto-caricate)
 
 > Blocco condiviso da **henaxis-playbook** (`shared/CLAUDE-core.md`), inserito automaticamente nel
@@ -44,7 +44,7 @@ Hai **due corpi di conoscenza complementari**: usali **entrambi**, non sottovalu
 - **Kanban & presidio**: task su `tasks.json` via `task.sh`; DoD = **LIVE & verificato**, non solo merged; presidio TTL 24h, auto-heartbeat — **KANBAN.md** (AP-046/048/054).
 - **Bump versione a ogni modifica frontend** nello stesso commit, visibile in UI (AP-045).
 - **Delega agentica solo con contratto** (TASK-CONTRACT.md): scope + tool whitelist + gate macchina + checkpoint; l'agente non auto-dichiara "fatto" (AP-041).
-- **Tool**: prima di scrivere uno script consulta **TOOLS.md** (+ `docs/tech/TOOLS.md` del repo); tool nuovo/esteso → registro con provenienza + news (AP-056).
+- **Tool**: prima di scrivere uno script consulta **TOOLS.md** (+ `docs/tech/TOOLS.md` del repo); tool nuovo/esteso → registro con provenienza + news (AP-056). **Mai errori/codici nudi, sempre spiegazioni**: ogni rifiuto di gate/tool/UI dice cosa è fallito, perché (AP) e il fix copiabile (AP-057).
 
 ## Precedenza
 In caso di conflitto, **queste convenzioni condivise prevalgono** sul contenuto locale del
