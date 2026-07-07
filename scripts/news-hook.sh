@@ -10,12 +10,22 @@ git -C "$PB" fetch -q origin news 2>/dev/null || true
 T=$(mktemp); git -C "$PB" show origin/news:news.json > "$T" 2>/dev/null
 python3 - "$T" <<'PY' 2>/dev/null
 import json,sys
+from datetime import datetime,timezone
+try: from zoneinfo import ZoneInfo; TZ=ZoneInfo("Europe/Rome")
+except Exception: TZ=None
 try: d=json.load(open(sys.argv[1]))
 except: sys.exit(0)
 if not d: sys.exit(0)
+# ts salvato in UTC (canonico, cross-macchina) → mostrato in ora ITALIANA (Europe/Rome): niente "T",
+# così combacia con l'orologio a muro e non si legge l'UTC come locale (AP-036).
+def loc(ts):
+ try:
+  dt=datetime.strptime(str(ts)[:19],"%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+  return (dt.astimezone(TZ) if TZ else dt).strftime("%Y-%m-%d %H:%M")
+ except Exception: return str(ts)[:16]
 # Summary troncati (costo-contesto: iniettati a OGNI prompt): il dettaglio si legge con news.sh recent.
 def cut(s,n=220): return s if len(s)<=n else s[:n].rstrip()+"…"
-lines=[f"[{e.get('ts','')[:16]}] {e.get('machine','?')}/{e.get('session','?')} {cut(e.get('type',''),12)}: {cut(e.get('summary',''))}" for e in d[-8:]]
+lines=[f"[{loc(e.get('ts',''))}] {e.get('machine','?')}/{e.get('session','?')} {cut(e.get('type',''),12)}: {cut(e.get('summary',''))}" for e in d[-8:]]
 print(json.dumps({"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"NEWS cross-sessione (branch news, troncate a 220 char — dettaglio: tools/news.sh recent):\n"+"\n".join(lines)}}))
 PY
 rm -f "$T"
