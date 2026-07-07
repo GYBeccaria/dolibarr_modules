@@ -60,6 +60,12 @@ for f in $(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep -
   [ -n "$n" ] && [ "$n" -gt 3 ] && echo "⚠ AP-007: 'articolato' >3 in $f ($n) — verifica retorica."
 done
 
+# Gate U2 (universale, warning): impact-check dei simboli condivisi/cross-repo (AP-059). Best-effort,
+# non blocca. Lo script sta nel clone playbook; ogni repo agganciato lo vede via scripts/ (symlink setup).
+IMPACT_GATE=""
+for cand in "scripts/impact-gate.sh" "$(dirname "$0")/impact-gate.sh"; do [ -r "$cand" ] && { IMPACT_GATE="$cand"; break; }; done
+[ -n "$IMPACT_GATE" ] && bash "$IMPACT_GATE" || true
+
 # Overlay per-repo: gate specifici della verticalizzazione (TS tsc, brand voice, design token...)
 if [ -x "scripts/playbook-gates.sh" ]; then
   if ! bash scripts/playbook-gates.sh; then FAIL=1; fi
