@@ -25,7 +25,7 @@ MSG
   fi
   # Gate 3b (AP-055): nome sessione obbligatorio — nessun commit anonimo. Trailer 'Session: <nome> (<hex8>)'.
   if ! grep -qiE "^Session:[[:space:]]*[^[:space:]]" "$COMMIT_MSG_FILE"; then
-    HEX="$(printf '%.8s' "${CLAUDE_CODE_SESSION_ID:-}")"
+    HEX="$(printf '%s' "${CLAUDE_CODE_SESSION_ID:-}" | tr -cd '0-9a-f' | cut -c1-8)"  # hex8 canonico (come henaxis_ses)
     cat >&2 <<MSG
 ✗ COMMIT RIFIUTATO — manca il trailer 'Session:' = QUALE sessione ha eseguito il commit (AP-055).
   Formato: nome human-friendly ASSEGNATO DALL'UMANO + hex8 tra parentesi. Aggiungi in fondo:

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # news-hook.sh — UserPromptSubmit: inietta news dal branch 'news' (git show → temp file → python).
 set -uo pipefail
+# Playbook config-driven (portabilità): env > ~/.config/henaxis/config.env > path convenzionali.
+[ -z "${HENAXIS_PLAYBOOK:-}" ] && [ -r "$HOME/.config/henaxis/config.env" ] && \
+  HENAXIS_PLAYBOOK=$(sed -n -E 's/^(export[[:space:]]+)?HENAXIS_PLAYBOOK=["'"'"']?([^"'"'"' ]+).*/\2/p' "$HOME/.config/henaxis/config.env" | tail -1)
 PB=""
 for d in "${HENAXIS_PLAYBOOK:-}" /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
  [ -n "$d" ] && [ -d "$d/.git" ] && { PB="$d"; break; }

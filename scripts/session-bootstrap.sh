@@ -9,6 +9,9 @@ ver=$(grep -oE 'version: [0-9.]+' docs/CLAUDE-core.md 2>/dev/null | head -1)
 repo=$(basename "$(pwd)")
 # AUTO-HEARTBEAT presidio (strumento > disciplina, AP-006/046): rinfresca la presence della sessione
 # in background, best-effort (mai blocca l'avvio). Non ruba presidi altrui attivi (semantica heartbeat).
+# Playbook config-driven (portabilità): env > ~/.config/henaxis/config.env > path convenzionali.
+[ -z "${HENAXIS_PLAYBOOK:-}" ] && [ -r "$HOME/.config/henaxis/config.env" ] && \
+  HENAXIS_PLAYBOOK=$(sed -n -E 's/^(export[[:space:]]+)?HENAXIS_PLAYBOOK=["'"'"']?([^"'"'"' ]+).*/\2/p' "$HOME/.config/henaxis/config.env" | tail -1)
 if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
   for d in "${HENAXIS_PLAYBOOK:-}" /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
     [ -n "$d" ] && [ -x "$d/tools/presence.sh" ] && { ( bash "$d/tools/presence.sh" heartbeat "$repo" >/dev/null 2>&1 & ) ; break; }

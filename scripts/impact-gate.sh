@@ -4,11 +4,17 @@
 # sarebbe attrito aggirabile; qui si INFORMA con l'impatto reale, la scelta resta all'umano/sessione.
 # Best-effort: senza token o con HenaxMetrics irraggiungibile, esce in silenzio (0). Read-only.
 set -uo pipefail
-URL="${HM_METRICS_URL:-https://metrics.henaxis.com}"
-TOKFILE="${HOME}/.config/henaxmetrics/ingest-token"
+# Config condivisa (host/token) — lib-henaxis.sh dal playbook (impact-gate è COPIATO in scripts/ del repo:
+# risolvo il playbook via env > config.env > path convenzionali, poi sorgo il loader da lì).
+[ -z "${HENAXIS_PLAYBOOK:-}" ] && [ -r "$HOME/.config/henaxis/config.env" ] && \
+  HENAXIS_PLAYBOOK=$(sed -n -E 's/^(export[[:space:]]+)?HENAXIS_PLAYBOOK=["'"'"']?([^"'"'"' ]+).*/\2/p' "$HOME/.config/henaxis/config.env" | tail -1)
+_self="$(readlink -f "$0" 2>/dev/null || echo "$0")"
+for _pb in "${HENAXIS_PLAYBOOK:-}" "$(dirname "$_self")/.." /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
+  [ -n "$_pb" ] && [ -r "$_pb/tools/lib-henaxis.sh" ] && { . "$_pb/tools/lib-henaxis.sh"; break; }
+done
+URL="${HM_METRICS_URL:-}"
 TOKEN="${HM_INGEST_TOKEN:-}"
-[ -z "$TOKEN" ] && [ -r "$TOKFILE" ] && TOKEN="$(head -1 "$TOKFILE" 2>/dev/null || true)"
-[ -n "$TOKEN" ] || exit 0                      # niente token → gate inattivo (best-effort)
+{ [ -n "$TOKEN" ] && [ -n "$URL" ]; } || exit 0   # niente token/URL → gate inattivo (best-effort)
 command -v curl >/dev/null 2>&1 || exit 0
 command -v python3 >/dev/null 2>&1 || exit 0
 
