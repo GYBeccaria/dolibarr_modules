@@ -11,8 +11,30 @@ COMMIT_MSG_FILE="${1:-}"
 # --- commit-msg context: Gate 3 ---
 if [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
   if ! grep -q "^ANTI-DRIFT CHECK:" "$COMMIT_MSG_FILE"; then
-    echo "✗ AP-FORMAT: manca la sezione ANTI-DRIFT CHECK nel commit message."
-    echo "  Aggiungila in fondo (vedi COMMIT-CONVENTION.md della playbook)."
+    cat >&2 <<'MSG'
+✗ COMMIT RIFIUTATO — manca la sezione ANTI-DRIFT CHECK (obbligatoria, COMMIT-CONVENTION.md).
+  Incolla e compila questo blocco IN FONDO al messaggio (prima dei trailer):
+
+ANTI-DRIFT CHECK:
+- Valore durevole oltre lo scope minimo: <test/astrazione/cleanup/decisione — o "nessuno", onesto>
+- Anti-pattern catalogati passati per veto: <AP-NNN, ... | nessuno>
+- Catch onesti presenti in questo commit: <1 riga ciascuno | nessuno>
+- Debito tracciato (se scorciatoia presa): <descrizione + dove | nessuno>
+MSG
+    exit 1
+  fi
+  # Gate 3b (AP-055): nome sessione obbligatorio — nessun commit anonimo. Trailer 'Session: <nome> (<hex8>)'.
+  if ! grep -qiE "^Session:[[:space:]]*[^[:space:]]" "$COMMIT_MSG_FILE"; then
+    HEX="$(printf '%s' "${CLAUDE_CODE_SESSION_ID:-}" | tr -cd '0-9a-f' | cut -c1-8)"  # hex8 canonico (come henaxis_ses)
+    cat >&2 <<MSG
+✗ COMMIT RIFIUTATO — manca il trailer 'Session:' = QUALE sessione ha eseguito il commit (AP-055).
+  Formato: nome human-friendly ASSEGNATO DALL'UMANO + hex8 tra parentesi. Aggiungi in fondo:
+
+Session: <nome> (${HEX:-<hex8>})
+
+  Il tuo hex8 è: ${HEX:-"sconosciuto (CLAUDE_CODE_SESSION_ID assente)"} — è lo stesso id di news/tasks/presence.
+  Se la sessione NON ha ancora un nome: FERMATI e chiedi all'umano di assegnarne uno (mai committare anonimo).
+MSG
     exit 1
   fi
   exit 0
@@ -24,7 +46,10 @@ if [ -x "scripts/sync-claude-shared.sh" ] && [ -e "docs/CLAUDE-core.md" ]; then
   if bash scripts/sync-claude-shared.sh; then
     git diff --quiet CLAUDE.md 2>/dev/null || { git add CLAUDE.md; echo "→ Gate 0: CLAUDE.md rigenerato (auto-staged)"; }
   else
-    echo "✗ Gate 0 sync fallito" >&2; exit 1
+    echo "✗ COMMIT BLOCCATO — Gate 0: sync di CLAUDE.md da docs/CLAUDE-core.md fallito." >&2
+    echo "  Diagnosi: esegui 'bash scripts/sync-claude-shared.sh' a mano per vedere l'errore" >&2
+    echo "  (cause tipiche: marker SHARED mancanti/duplicati in CLAUDE.md, docs/CLAUDE-core.md assente)." >&2
+    exit 1
   fi
 fi
 
@@ -35,10 +60,16 @@ for f in $(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep -
   [ -n "$n" ] && [ "$n" -gt 3 ] && echo "⚠ AP-007: 'articolato' >3 in $f ($n) — verifica retorica."
 done
 
+# Gate U2 (universale, warning): impact-check dei simboli condivisi/cross-repo (AP-059). Best-effort,
+# non blocca. Lo script sta nel clone playbook; ogni repo agganciato lo vede via scripts/ (symlink setup).
+IMPACT_GATE=""
+for cand in "scripts/impact-gate.sh" "$(dirname "$0")/impact-gate.sh"; do [ -r "$cand" ] && { IMPACT_GATE="$cand"; break; }; done
+[ -n "$IMPACT_GATE" ] && bash "$IMPACT_GATE" || true
+
 # Overlay per-repo: gate specifici della verticalizzazione (TS tsc, brand voice, design token...)
 if [ -x "scripts/playbook-gates.sh" ]; then
   if ! bash scripts/playbook-gates.sh; then FAIL=1; fi
 fi
 
-[ "$FAIL" -eq 1 ] && { echo ""; echo "Pre-commit anti-drift bloccante. Correggi e ritenta."; exit 1; }
+[ "$FAIL" -eq 1 ] && { echo ""; echo "✗ COMMIT BLOCCATO dai gate per-repo qui sopra (scripts/playbook-gates.sh): ogni ✗ dice il file e la regola violata — correggi quelli e ritenta."; exit 1; }
 exit 0
