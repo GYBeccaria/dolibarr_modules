@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# impact-gate.sh — Gate U2 del pre-commit (AP-059): avverte se il commit modifica la firma/semantica
-# di un simbolo con call-site CROSS-REPO. WARNING, NON blocca (decisione: A+B, non C): il gate hard
-# sarebbe attrito aggirabile; qui si INFORMA con l'impatto reale, la scelta resta all'umano/sessione.
+# impact-gate.sh — Gate U2 del pre-commit (AP-059). Doppio regime, deciso il 2026-07-08 (rivalutazione
+# della scelta originale "A+B non C"): WARNING per il caso comune (informa, non blocca — l'attrito di un
+# hard-block universale sarebbe aggirabile e la scelta resta all'umano/sessione); HARD-BLOCK solo per
+# l'ALTO RISCHIO oggettivo — simbolo con ≥2 call-site CROSS-REPO a confidenza ALTA (nessun omonimo
+# ambiguo): lì un cambio di firma/semantica rompe silenziosamente altri repo senza che nessun test
+# locale lo veda. Eccezione consapevole e AUDITATA (come Gate D1): IMPACT_GATE_OVERRIDE="<motivo>".
 # Best-effort: senza token o con HenaxMetrics irraggiungibile, esce in silenzio (0). Read-only.
 set -uo pipefail
 # Config condivisa (host/token) — lib-henaxis.sh dal playbook (impact-gate è COPIATO in scripts/ del repo:
@@ -30,33 +33,53 @@ mapfile -t syms < <(
 [ "${#syms[@]}" -gt 0 ] || exit 0
 
 warned=0
+hard=0
+hard_syms=""
 for s in "${syms[@]}"; do
   [ "${#s}" -ge 3 ] || continue
   out=$(curl -sS --max-time 4 -H "Authorization: Bearer $TOKEN" \
         "$URL/api/impact?symbol=$s&depth=2" 2>/dev/null) || continue
-  # solo se ESISTE almeno un call-site cross-repo
-  cross=$(printf '%s' "$out" | python3 -c "
+  # riga 1 = RISK (HIGH|LOW) · riga 2 = n. call-site cross · righe successive = dettaglio umano
+  result=$(printf '%s' "$out" | python3 -c "
 import json,sys
 try: d=json.load(sys.stdin)
 except Exception: sys.exit(0)
 hits=[h for lvl in d.get('levels',[]) for h in lvl.get('hits',[]) if h.get('cross')]
 if not hits: sys.exit(0)
-print(f\"{len(hits)}\")
+conf=hits[0].get('confidence','bassa')
+# ALTO RISCHIO: ≥2 call-site cross-repo E nessuna ambiguità (confidenza alta = 1 solo omonimo nel parco)
+risk='HIGH' if (len(hits)>=2 and conf=='alta') else 'LOW'
+print(risk); print(len(hits))
 for h in hits[:5]: print(f\"    {h['repo']}/{h['file']}:{h['line']} (in {h.get('caller') or 'top-level'}) conf:{h['confidence']}\")
 " 2>/dev/null) || continue
-  [ -n "$cross" ] || continue
-  n=$(printf '%s' "$cross" | head -1)
+  [ -n "$result" ] || continue
+  risk=$(printf '%s' "$result" | sed -n '1p'); n=$(printf '%s' "$result" | sed -n '2p')
   if [ "$warned" -eq 0 ]; then
     echo "" >&2
-    echo "⚠ AP-059 — stai modificando simboli usati da ALTRI repo (impact-check, non bloccante):" >&2
+    echo "⚠ AP-059 — stai modificando simboli usati da ALTRI repo (impact-check):" >&2
     warned=1
   fi
-  echo "  • $s — $n call-site CROSS-REPO:" >&2
-  printf '%s\n' "$cross" | tail -n +2 >&2
+  tag=""; [ "$risk" = HIGH ] && { hard=1; hard_syms="$hard_syms $s"; tag=" [ALTO RISCHIO: ≥2 call-site, confidenza alta → HARD-BLOCK]"; }
+  echo "  • $s — $n call-site CROSS-REPO$tag:" >&2
+  printf '%s\n' "$result" | tail -n +3 >&2
 done
 
 [ "$warned" -eq 1 ] && {
   echo "  → verifica quei chiamanti prima di cambiare firma/semantica; se serve, coordina via news (AP-046)." >&2
   echo "  → dettaglio completo: tools/hm-impact.sh - <simbolo>" >&2
 }
-exit 0   # WARNING only (A+B, non C): mai bloccare
+
+if [ "$hard" -eq 1 ]; then
+  if [ -n "${IMPACT_GATE_OVERRIDE:-}" ]; then
+    echo "" >&2
+    echo "⚠ Gate U2 ALTO RISCHIO — ECCEZIONE CONSAPEVOLE (audita): IMPACT_GATE_OVERRIDE=\"$IMPACT_GATE_OVERRIDE\"" >&2
+    exit 0
+  fi
+  echo "" >&2
+  echo "✗ COMMIT BLOCCATO — Gate U2 alto rischio (AP-059):$hard_syms ha ≥2 call-site CROSS-REPO a confidenza ALTA." >&2
+  echo "  Perché: cambiare firma/semantica qui rompe silenziosamente altri repo — nessun test locale lo vede." >&2
+  echo "  Fix: verifica ogni call-site (tools/hm-impact.sh - <simbolo>), aggiorna i chiamanti o coordina (news/presidio, AP-046)." >&2
+  echo "  Eccezione consapevole: IMPACT_GATE_OVERRIDE=\"<motivo>\" git commit ..." >&2
+  exit 1
+fi
+exit 0   # rischio basso/warning: mai bloccare (resta A+B per il caso comune)
