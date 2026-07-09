@@ -53,6 +53,32 @@ if [ -x "scripts/sync-claude-shared.sh" ] && [ -e "docs/CLAUDE-core.md" ]; then
   fi
 fi
 
+# Gate 0b (SOLO playbook — no-op altrove): densifica AUTOMATICAMENTE i wikilink AP-0xx nudi nei
+# .md staged, PRIMA che il commit si chiuda. Nato da: la densificazione era un passaggio MANUALE
+# separato (obsidian-linkify.sh check/apply) — è rimasta pending, non committata, per giorni,
+# esattamente il tipo di "disciplina che deve ricordarsi da sola" che l'ecosistema rifiuta (AP-006).
+# Qui è nativo del commit stesso: scrivi "AP-006" in prosa, il gate lo converte in wikilink prima
+# che il commit si chiuda — non c'è più uno stato "pending di conversione" da tenere a mente.
+# Best-effort (non hard-block): un fallimento qui è quasi sempre un problema d'ambiente (python3
+# assente), non un problema di contenuto — il tool stesso protegge i block-id di definizione
+# (^AP-0xx), quindi un successo è per costruzione sicuro da auto-stagare.
+if [ -x "tools/obsidian-linkify.sh" ] && [ -e "ANTIPATTERNS.md" ]; then
+  MD_STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E '\.md$' || true)
+  if [ -n "$MD_STAGED" ]; then
+    if bash tools/obsidian-linkify.sh apply $MD_STAGED 2>/tmp/obsidian-linkify-gate.err; then
+      CHANGED=0
+      for f in $MD_STAGED; do
+        [ -f "$f" ] && { git diff --quiet -- "$f" 2>/dev/null || { git add "$f"; CHANGED=1; }; }
+      done
+      [ "$CHANGED" -eq 1 ] && echo "→ Gate 0b: wikilink AP-0xx densificati automaticamente nei .md staged (auto-staged)."
+    else
+      echo "⚠ Gate 0b: obsidian-linkify.sh apply non riuscito (non blocca — verifica a mano se serve):" >&2
+      sed 's/^/  /' /tmp/obsidian-linkify-gate.err >&2 2>/dev/null || true
+    fi
+    rm -f /tmp/obsidian-linkify-gate.err
+  fi
+fi
+
 # Gate U1 (universale, warning): tic verbale di riempimento nei .md (AP-007)
 for f in $(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep -E '\.md$' || true); do
   [ -f "$f" ] || continue

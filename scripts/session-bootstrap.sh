@@ -35,6 +35,33 @@ if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
     fi
   fi
 fi
+# Refresh idempotente del wiring PreToolUse (gate Serena, AP-066) in .claude/settings.json: lo
+# script scripts/serena-gate-hook.py arriva via git (commit-fleet, condiviso), ma l'attivazione
+# richiede il path ASSOLUTO di QUESTA macchina/checkout — non propagabile via git perché .claude/
+# è gitignored apposta (path machine-specific). Prima serviva rilanciare setup-repo.sh a mano per
+# ogni repo/macchina dopo ogni propagazione flotta; qui si rigenera ad ogni SessionStart così
+# l'attivazione segue lo script senza sweep manuale (strumento > disciplina, AP-006). Tocca SOLO
+# la chiave PreToolUse, preserva il resto; se il file manca o è illeggibile non lo tocca (la
+# creazione da zero resta compito esplicito di setup-repo.sh — mai ricostruire alla cieca un file
+# che possiede anche SessionStart/UserPromptSubmit). Best-effort, mai blocca l'avvio.
+if [ -e .claude/settings.json ] && [ -e scripts/serena-gate-hook.py ] && command -v python3 >/dev/null 2>&1; then
+  python3 - "$(pwd)/scripts/serena-gate-hook.py" <<'PYEOF' >/dev/null 2>&1 || true
+import json, os, sys
+abs_path = sys.argv[1]
+p = ".claude/settings.json"
+with open(p) as f:
+    cfg = json.load(f)
+cfg.setdefault("hooks", {})
+wanted = [{"matcher": "Bash", "hooks": [{"type": "command", "command": f"python3 {abs_path}", "timeout": 8}]}]
+if cfg["hooks"].get("PreToolUse") != wanted:
+    cfg["hooks"]["PreToolUse"] = wanted
+    tmp = p + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(cfg, f, indent=2)
+    os.replace(tmp, p)
+PYEOF
+fi
+
 ctx="Repo '$repo' agganciato a henaxis-playbook ($ver). Leggi l'orientamento in cima a CLAUDE.md: usa PLAYBOOK (regole+strumenti) E docs/ (modulo, Serena, finalita) — ENTRAMBI, non sottovalutarne nessuno. Serena MCP attivo per i simboli del codice (usa i tool serena invece di leggere a tappeto). Deleghe agentiche solo con TASK-CONTRACT; PROD e' fonte di verita (AP-040, gate umano). PRESIDIO (AP-046): heartbeat AUTO eseguito per '$repo'; prima di IMPLEMENTARE in un ALTRO progetto verifica il presidio (tools/presence.sh check <repo>); se e' di un'altra sessione, INSTRADA il lavoro li (news/handoff). Nomina la sessione: tools/presence.sh claim <repo> <nome> (il nome appare sulla board). COORDINAMENTO (AP-062): il listener event-driven si e' auto-armato in background (coord-listen.mjs, nessuna azione richiesta); diretti/escalation per te appaiono gia' ad ogni prompt (news-hook), niente da fare per riceverli."
 # ctx privo di doppi apici/newline -> JSON sicuro senza escaping
 printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
