@@ -35,8 +35,8 @@ languages:
 - php
 - typescript
 - scss
-- html
 - bash
+- html
 - python
 
 # the encoding used by text files in the project
