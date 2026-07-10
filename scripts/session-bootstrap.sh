@@ -81,7 +81,14 @@ fi
 # ("leggi le news") — lo stesso polling-mascherato-da-evento che AP-062 vieta. Istruzione diretta
 # alla sessione, non solo un promemoria: verificalo ORA.
 if [ "${#HEX}" -eq 8 ]; then
-  coord_note="COORDINAMENTO (AP-062): il listener coord-listen.mjs e' auto-armato in background, MA nessun bash-hook puo' armare per te il Monitor che lo osserva — e' un'azione agentica che DEVI fare tu ora: prima TaskList (se un Monitor sul wake trigger e' gia' attivo, non riarmarlo); altrimenti arma un Monitor persistente che polla/tail ~/.coord/$HEX/wake (o inotifywait -m se disponibile) — senza, diretti/escalation restano invisibili finche' l'umano non te lo dice a voce (gap reale gia' successo)."
+  if command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOME/.config/henaxis/mqtt.env" ]; then
+    # Bus MQTT (SoT: playbook MQTT.md) — il Monitor si abbona DIRETTAMENTE al broker: ogni messaggio
+    # e' una notifica nativa, QoS1+sessione persistente = recapito anche di cio' che e' arrivato
+    # mentre eri giu', Last-Will = presenza gestita dal protocollo (niente lifecycle da curare).
+    coord_note="COORDINAMENTO (AP-062, bus MQTT — SoT playbook MQTT.md): DEVI armare tu ora un Monitor persistente abbonato al bus (azione agentica, nessun hook puo' farlo per te). Prima TaskList (se gia' attivo non riarmarlo); poi Monitor con lo script d'abbonamento documentato in MQTT.md sezione 'Come una SESSIONE si abbona' (mosquitto_sub sui topic henaxis/news/directed/$HEX e henaxis/coord/escalation/$HEX, credenziali da ~/.config/henaxis/mqtt.env, presenza LWT su henaxis/presence/$HEX, failover locale→remoto). Senza, i diretti delle altre sessioni restano invisibili finche' l'umano non te lo dice a voce."
+  else
+    coord_note="COORDINAMENTO (AP-062): mosquitto/credenziali MQTT non disponibili su questa macchina — fallback legacy: verifica con TaskList e arma un Monitor persistente che polla ~/.coord/$HEX/wake (scritto da coord-listen.mjs, auto-armato in background)."
+  fi
 else
   coord_note="COORDINAMENTO (AP-062): listener event-driven disponibile ma CLAUDE_CODE_SESSION_ID assente in questa esecuzione, niente hex8 su cui armare il Monitor."
 fi
