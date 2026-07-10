@@ -41,6 +41,12 @@ parts=[]
 if d:
     lines=[f"[{loc(e.get('ts',''))}] {e.get('machine','?')}/{e.get('session','?')} {cut(e.get('type',''),12)}: {cut(e.get('summary',''))}" for e in d[-8:]]
     parts.append("NEWS cross-sessione (branch news, troncate a 220 char — dettaglio: tools/news.sh recent):\n"+"\n".join(lines))
+    # Promemoria della regola PRIMA di scrivere, non dopo un rifiuto: il gate di news.sh respinge
+    # (non tronca) una sintesi >500 char — richiesto esplicitamente 2026-07-10, un taglio automatico
+    # rischia di perdere info essenziale o creare ambiguità. Fix del pattern "scrivo lungo → rifiutato
+    # → riscrivo" ripetuto su OGNI sessione (AP-006/AP-074): la regola va vista qui, a monte, non
+    # scoperta dopo aver già composto il testo.
+    parts.append("Per scrivere: news.sh post|to <tipo> \"<sintesi>\" [refs] — sintesi ≤500 char DAVVERO (il gate RIFIUTA, non tronca: scegli tu cosa conta, dettaglio esteso in refs/docs/handoff).")
 inbox_path = sys.argv[2]
 if inbox_path:
     try: raw=[json.loads(l) for l in open(inbox_path) if l.strip()]
