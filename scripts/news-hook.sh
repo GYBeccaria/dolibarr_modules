@@ -17,6 +17,7 @@ done
 [ -z "$PB" ] && exit 0
 git -C "$PB" fetch -q origin news 2>/dev/null || true
 T=$(mktemp); git -C "$PB" show origin/news:news.json > "$T" 2>/dev/null
+P=$(mktemp); git -C "$PB" show origin/news:presence.json > "$P" 2>/dev/null
 
 # Guardiano presenza MQTT (best-effort, timeout breve): la sessione DEVE avere un Monitor armato
 # sul bus (session-bootstrap.sh la istruisce a SessionStart) — se per qualunque motivo è morto a
@@ -38,7 +39,7 @@ if [ "${#HEX}" -eq 8 ] && command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOM
   fi
 fi
 
-python3 - "$T" "$MQTT_WARN" <<'PY' 2>/dev/null
+python3 - "$T" "$MQTT_WARN" "$P" <<'PY' 2>/dev/null
 import json,sys
 from datetime import datetime,timezone
 try: from zoneinfo import ZoneInfo; TZ=ZoneInfo("Europe/Rome")
@@ -53,9 +54,25 @@ def loc(ts):
   return (dt.astimezone(TZ) if TZ else dt).strftime("%Y-%m-%d %H:%M")
  except Exception: return str(ts)[:16]
 def cut(s,n=220): return s if len(s)<=n else s[:n].rstrip()+"…"
+def load_names(path):
+  # hex8 → nome umano (label del claim presence più recente, AP-058: l'hex8 non è mai il
+  # display primario, solo la chiave tecnica). Fallback: hex8 stesso se ignoto.
+  try: pj=json.load(open(path))
+  except Exception: return {}
+  best={}
+  for proj,c in pj.items():
+    sid=c.get('session'); lbl=c.get('label') or proj
+    if not sid: continue
+    ls=c.get('last_seen') or c.get('claimed_at') or ''
+    if sid not in best or ls>best[sid][1]: best[sid]=(lbl,ls)
+  return {k:v[0] for k,v in best.items()}
+NAMES=load_names(sys.argv[3])
+def who(sid):
+  n=NAMES.get(sid)
+  return f"{n} ({sid})" if n and n!=sid else (sid or '?')
 parts=[]
 if d:
-    lines=[f"[{loc(e.get('ts',''))}] {e.get('machine','?')}/{e.get('session','?')} {cut(e.get('type',''),12)}: {cut(e.get('summary',''))}" for e in d[-8:]]
+    lines=[f"[{loc(e.get('ts',''))}] {e.get('machine','?')}/{who(e.get('session','?'))} {cut(e.get('type',''),12)}: {cut(e.get('summary',''))}" for e in d[-8:]]
     parts.append("NEWS cross-sessione (branch news, troncate a 220 char — dettaglio: tools/news.sh recent):\n"+"\n".join(lines))
     # Promemoria della regola PRIMA di scrivere, non dopo un rifiuto: il gate di news.sh respinge
     # (non tronca) una sintesi >500 char — richiesto esplicitamente 2026-07-10, un taglio automatico
@@ -69,4 +86,4 @@ if mqtt_warn:
 if not parts: sys.exit(0)
 print(json.dumps({"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"\n\n".join(parts)}}))
 PY
-rm -f "$T"
+rm -f "$T" "$P"
