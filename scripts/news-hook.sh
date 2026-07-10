@@ -22,6 +22,23 @@ HEX="$(printf '%s' "${CLAUDE_CODE_SESSION_ID:-}" | tr -cd '0-9a-f' | cut -c1-8)"
 INBOX=""
 [ "${#HEX}" -eq 8 ] && [ -s "$COORD_DIR/$HEX/inbox.jsonl" ] && INBOX="$COORD_DIR/$HEX/inbox.jsonl"
 
+# SELF-HEAL del listener event-driven (AP-062): coord-listen.mjs si auto-arma a SessionStart
+# (session-bootstrap.sh), MA se muore a meta' sessione (segnale esterno/OOM) niente lo resuscita
+# fino al prossimo SessionStart — una sessione LUNGA resta senza listener e non riceve piu' i
+# diretti (gap reale 2026-07-10: sad presidiata da una sessione viva ma listener=0 su compliance).
+# UserPromptSubmit gira ad OGNI prompt: e' il punto giusto per un keepalive bash-automatabile (non
+# serve ricordarsene, non e' un'azione agentica). Pidfile-guard: rispawna SOLO se morto. Best-effort,
+# mai blocca il prompt.
+if [ "${#HEX}" -eq 8 ] && command -v node >/dev/null 2>&1; then
+  LDIR="$COORD_DIR/$HEX"; mkdir -p "$LDIR" 2>/dev/null
+  LPID="$LDIR/listener.pid"
+  if ! { [ -s "$LPID" ] && kill -0 "$(cat "$LPID" 2>/dev/null)" 2>/dev/null; }; then
+    if [ -r "$PB/tools/coord-listen.mjs" ]; then
+      ( nohup node "$PB/tools/coord-listen.mjs" "$HEX" >"$LDIR/listener.log" 2>&1 & echo $! > "$LPID" )
+    fi
+  fi
+fi
+
 python3 - "$T" "$INBOX" <<'PY' 2>/dev/null
 import json,sys
 from datetime import datetime,timezone

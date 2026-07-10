@@ -38,10 +38,28 @@ e = d.get(sys.argv[2])
 print(e.get('methodology', 'unit') if e else '')
 " "$PLAYBOOK/test-commands.json" "$REPO" 2>/dev/null)"
 [ -n "$METH" ] || METH="unit"
+# selfReports=true: il comando riporta GIA' da solo, per-test, via hm-test.sh (es. report-battery.sh
+# di henaxmetrics o la test-battery di Domicare) — NON va wrappato, altrimenti si crea un secondo run
+# aggregato ridondante accanto a quello ricco. In quel caso il hook lo esegue e basta; l'evidenza
+# per-test la scrive il comando. (2026-07-10: aggiunto per non ridurre 136 test a 2 righe opache.)
+SELF="$(python3 -c "
+import json, sys
+try: d = json.load(open(sys.argv[1]))
+except Exception: sys.exit(0)
+e = d.get(sys.argv[2])
+print('1' if e and e.get('selfReports') else '')
+" "$PLAYBOOK/test-commands.json" "$REPO" 2>/dev/null)"
 
 if [ -z "${CMD:-}" ]; then
   echo "· test-evidence-hook: '$REPO' non ha un comando registrato in test-commands.json (playbook) — nessun report automatico." >&2
   echo "  Registralo lì (repo → {cmd, methodology}) o riporta a mano prima del push: RID=\$(hm-test.sh run-start $REPO dev full)" >&2
+  exit 0
+fi
+
+if [ "$SELF" = "1" ]; then
+  # il comando possiede il proprio run (run-start/test/run-end): eseguilo, non wrapparlo.
+  bash -c "$CMD"; RC=$?
+  [ "$RC" -eq 0 ] || echo "⚠ test-evidence-hook: '$REPO' — battery self-reporting FALLITA (l'ha riportata lei come no-go, push NON bloccato)." >&2
   exit 0
 fi
 
