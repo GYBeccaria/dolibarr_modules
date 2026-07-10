@@ -18,34 +18,11 @@ if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
   for d in "${HENAXIS_PLAYBOOK:-}" /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
     [ -n "$d" ] && [ -x "$d/tools/presence.sh" ] && { ( bash "$d/tools/presence.sh" heartbeat "$repo" >/dev/null 2>&1 & ) ; break; }
   done
-  # AUTO-ARM del coordinamento event-driven (AP-062, strumento non disciplina): il listener parte
-  # da solo — nessuna sessione deve "ricordarsi" di armarlo. Un pidfile evita doppioni al resume/clear;
-  # best-effort totale (senza node/token il listener semplicemente non parte, mai blocca l'avvio).
-  if [ "${#HEX}" -eq 8 ] && command -v node >/dev/null 2>&1; then
-    COORD_DIR="${HENAXIS_COORD_DIR:-$HOME/.coord}/$HEX"
-    mkdir -p "$COORD_DIR" 2>/dev/null
-    # session.pid = PID del processo `claude` di QUESTA sessione (risalgo l'ancestry /proc dal hook):
-    # è il segnale di AUTO-MORTE distribuita del listener (coord-listen.mjs esce quando questo PID
-    # muore) — niente reaper centrale, niente SPOF. Best-effort: se non risolvo il PID, non scrivo
-    # il file e il listener resta senza auto-morte (fail-safe, comportamento storico).
-    _cpid=""; _p="$PPID"
-    for _ in 1 2 3 4 5 6 7 8; do
-      [ -r "/proc/$_p/comm" ] || break
-      [ "$(cat "/proc/$_p/comm" 2>/dev/null)" = "claude" ] && { _cpid="$_p"; break; }
-      _p="$(awk '/^PPid:/{print $2}' "/proc/$_p/status" 2>/dev/null)"
-      [ -n "$_p" ] && [ "$_p" -gt 1 ] 2>/dev/null || break
-    done
-    [ -n "$_cpid" ] && printf '%s\n' "$_cpid" > "$COORD_DIR/session.pid" 2>/dev/null
-    PIDFILE="$COORD_DIR/listener.pid"
-    if ! { [ -s "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; }; then
-      for d in "${HENAXIS_PLAYBOOK:-}" /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
-        if [ -n "$d" ] && [ -r "$d/tools/coord-listen.mjs" ]; then
-          ( nohup node "$d/tools/coord-listen.mjs" "$HEX" >"$COORD_DIR/listener.log" 2>&1 & echo $! > "$PIDFILE" )
-          break
-        fi
-      done
-    fi
-  fi
+  # Coordinamento event-driven: bus MQTT (MQTT.md). L'auto-arm di un processo listener bash-side
+  # è STATO RIMOSSO in F5 (2026-07-10) — l'unico meccanismo che funzionava davvero era il Monitor
+  # agentico (armato più sotto via istruzione esplicita), non lo script coord-listen.mjs in sé, che
+  # comunque richiedeva un'azione agentica per essere osservato (AP-062, "un hook non può armare un
+  # Monitor per conto della sessione"). Il bus sostituisce anche l'auto-morte/pidfile/session.pid.
 fi
 # Refresh idempotente del wiring PreToolUse (gate Serena, AP-066) in .claude/settings.json: lo
 # script scripts/serena-gate-hook.py arriva via git (commit-fleet, condiviso), ma l'attivazione
@@ -74,20 +51,19 @@ if cfg["hooks"].get("PreToolUse") != wanted:
 PYEOF
 fi
 
-# COORDINAMENTO (AP-062, gap chiuso 2026-07-10): coord-listen.mjs (auto-armato sopra) scrive
-# fedelmente il trigger ~/.coord/<hex8>/wake sugli eventi diretti/escalation — ma nessun bash-hook
-# puo' armare un Monitor per conto della sessione (e' un'azione agentica, non automatizzabile da
-# shell). SENZA quel Monitor esplicito, il file cambia nel vuoto e l'umano deve chiedere a voce
-# ("leggi le news") — lo stesso polling-mascherato-da-evento che AP-062 vieta. Istruzione diretta
-# alla sessione, non solo un promemoria: verificalo ORA.
+# COORDINAMENTO (AP-062, bus MQTT — SoT playbook MQTT.md, cutover F5 completato 2026-07-10): nessun
+# hook bash può armare un Monitor per conto della sessione (è un'azione agentica) — SENZA, i diretti
+# restano invisibili finché l'umano non lo dice a voce (lo stesso polling-mascherato-da-evento che
+# AP-062 vieta). Istruzione diretta alla sessione, non solo un promemoria: verificalo ORA. Un
+# guardiano leggero in news-hook.sh (ogni prompt) segnala se la presenza retained risulta offline.
 if [ "${#HEX}" -eq 8 ]; then
   if command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOME/.config/henaxis/mqtt.env" ]; then
-    # Bus MQTT (SoT: playbook MQTT.md) — il Monitor si abbona DIRETTAMENTE al broker: ogni messaggio
-    # e' una notifica nativa, QoS1+sessione persistente = recapito anche di cio' che e' arrivato
-    # mentre eri giu', Last-Will = presenza gestita dal protocollo (niente lifecycle da curare).
+    # Il Monitor si abbona DIRETTAMENTE al broker: ogni messaggio è una notifica nativa, QoS1+
+    # sessione persistente = recapito anche di ciò che è arrivato mentre eri giù, Last-Will =
+    # presenza gestita dal protocollo (niente lifecycle da curare).
     coord_note="COORDINAMENTO (AP-062, bus MQTT — SoT playbook MQTT.md): DEVI armare tu ora un Monitor persistente abbonato al bus (azione agentica, nessun hook puo' farlo per te). Prima TaskList (se gia' attivo non riarmarlo); poi Monitor con lo script d'abbonamento documentato in MQTT.md sezione 'Come una SESSIONE si abbona' (mosquitto_sub sui topic henaxis/news/directed/$HEX e henaxis/coord/escalation/$HEX, credenziali da ~/.config/henaxis/mqtt.env, presenza LWT su henaxis/presence/$HEX, failover locale→remoto). Senza, i diretti delle altre sessioni restano invisibili finche' l'umano non te lo dice a voce."
   else
-    coord_note="COORDINAMENTO (AP-062): mosquitto/credenziali MQTT non disponibili su questa macchina — fallback legacy: verifica con TaskList e arma un Monitor persistente che polla ~/.coord/$HEX/wake (scritto da coord-listen.mjs, auto-armato in background)."
+    coord_note="COORDINAMENTO (AP-062): mosquitto/credenziali MQTT non disponibili su questa macchina (~/.config/henaxis/mqtt.env mancante o mosquitto-clients non installato) — il coordinamento event-driven resta inattivo qui; i diretti restano visibili comunque nella news injection ad ogni prompt (record git, mai perso)."
   fi
 else
   coord_note="COORDINAMENTO (AP-062): listener event-driven disponibile ma CLAUDE_CODE_SESSION_ID assente in questa esecuzione, niente hex8 su cui armare il Monitor."

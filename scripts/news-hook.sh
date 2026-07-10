@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# news-hook.sh — UserPromptSubmit: inietta news dal branch 'news' (git show → temp file → python)
-# + DRENA l'inbox del coordinamento event-driven (AP-062/063): diretti/escalation per QUESTA sessione,
-# scritti da coord-listen.mjs in ~/.coord/<hex8>/inbox.jsonl, appaiono qui ad OGNI prompt — zero
-# scelta della sessione (livello "automatico per costruzione", non un Monitor da armare a mano).
-# L'inbox viene svuotata dopo la lettura (mailbox: se arrivano eventi tra un prompt e l'altro,
-# compaiono al prossimo; il RECORD resta comunque la news, questo è solo un promemoria locale).
+# news-hook.sh — UserPromptSubmit: inietta news dal branch 'news' (git show → temp file → python).
+# Il coordinamento event-driven (diretti/escalation) è sul bus MQTT (MQTT.md) — la sessione si
+# abbona con un Monitor agentico (armato al SessionStart, orientamento in session-bootstrap.sh);
+# questo hook non lo gestisce più (F5, 2026-07-10: rimossi self-heal/session.pid/inbox legacy,
+# cutover confermato da tutte le sessioni attive). Resta un guardiano leggero: se la presenza
+# retained della sessione risulta offline, lo ricorda qui — a costo quasi zero (query locale,
+# timeout breve, mai blocca il prompt).
 set -uo pipefail
 # Playbook config-driven (portabilità): env > ~/.config/henaxis/config.env > path convenzionali.
 [ -z "${HENAXIS_PLAYBOOK:-}" ] && [ -r "$HOME/.config/henaxis/config.env" ] && \
@@ -17,38 +18,27 @@ done
 git -C "$PB" fetch -q origin news 2>/dev/null || true
 T=$(mktemp); git -C "$PB" show origin/news:news.json > "$T" 2>/dev/null
 
-COORD_DIR="${HENAXIS_COORD_DIR:-$HOME/.coord}"
+# Guardiano presenza MQTT (best-effort, timeout breve): la sessione DEVE avere un Monitor armato
+# sul bus (session-bootstrap.sh la istruisce a SessionStart) — se per qualunque motivo è morto a
+# metà sessione (visto succedere: compattazione contesto, kill esterno), qui lo si scopre e lo si
+# ricorda SENZA riarmarlo da soli (armare un Monitor è un'azione agentica, un hook bash non può
+# farlo — stesso limite di sempre, MQTT.md).
+MQTT_WARN=""
 HEX="$(printf '%s' "${CLAUDE_CODE_SESSION_ID:-}" | tr -cd '0-9a-f' | cut -c1-8)"
-INBOX=""
-[ "${#HEX}" -eq 8 ] && [ -s "$COORD_DIR/$HEX/inbox.jsonl" ] && INBOX="$COORD_DIR/$HEX/inbox.jsonl"
-
-# SELF-HEAL del listener event-driven (AP-062): coord-listen.mjs si auto-arma a SessionStart
-# (session-bootstrap.sh), MA se muore a meta' sessione (segnale esterno/OOM) niente lo resuscita
-# fino al prossimo SessionStart — una sessione LUNGA resta senza listener e non riceve piu' i
-# diretti (gap reale 2026-07-10: sad presidiata da una sessione viva ma listener=0 su compliance).
-# UserPromptSubmit gira ad OGNI prompt: e' il punto giusto per un keepalive bash-automatabile (non
-# serve ricordarsene, non e' un'azione agentica). Pidfile-guard: rispawna SOLO se morto. Best-effort,
-# mai blocca il prompt.
-if [ "${#HEX}" -eq 8 ] && command -v node >/dev/null 2>&1; then
-  LDIR="$COORD_DIR/$HEX"; mkdir -p "$LDIR" 2>/dev/null
-  # session.pid = PID del `claude` di questa sessione (auto-morte distribuita del listener, no SPOF).
-  _cpid=""; _p="$PPID"
-  for _ in 1 2 3 4 5 6 7 8; do
-    [ -r "/proc/$_p/comm" ] || break
-    [ "$(cat "/proc/$_p/comm" 2>/dev/null)" = "claude" ] && { _cpid="$_p"; break; }
-    _p="$(awk '/^PPid:/{print $2}' "/proc/$_p/status" 2>/dev/null)"
-    [ -n "$_p" ] && [ "$_p" -gt 1 ] 2>/dev/null || break
-  done
-  [ -n "$_cpid" ] && printf '%s\n' "$_cpid" > "$LDIR/session.pid" 2>/dev/null
-  LPID="$LDIR/listener.pid"
-  if ! { [ -s "$LPID" ] && kill -0 "$(cat "$LPID" 2>/dev/null)" 2>/dev/null; }; then
-    if [ -r "$PB/tools/coord-listen.mjs" ]; then
-      ( nohup node "$PB/tools/coord-listen.mjs" "$HEX" >"$LDIR/listener.log" 2>&1 & echo $! > "$LPID" )
-    fi
+if [ "${#HEX}" -eq 8 ] && command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOME/.config/henaxis/mqtt.env" ]; then
+  # shellcheck disable=SC1091
+  . "$HOME/.config/henaxis/mqtt.env"
+  if [ -n "${MQTT_USER:-}" ] && [ -n "${MQTT_PASS:-}" ]; then
+    LHOST="${MQTT_LOCAL%%:*}"; LPORT="${MQTT_LOCAL##*:}"
+    STATE=$(timeout 2 mosquitto_sub -h "${LHOST:-localhost}" -p "${LPORT:-1883}" -u "$MQTT_USER" -P "$MQTT_PASS" -t "henaxis/presence/$HEX" -C 1 -W 1 2>/dev/null)
+    case "$STATE" in
+      *online*) : ;;  # tutto ok, niente da dire
+      *) MQTT_WARN="Il tuo Monitor MQTT risulta OFFLINE (henaxis/presence/$HEX) — riarmalo (MQTT.md, sezione abbonamento sessione): TaskList prima per non duplicarlo." ;;
+    esac
   fi
 fi
 
-python3 - "$T" "$INBOX" <<'PY' 2>/dev/null
+python3 - "$T" "$MQTT_WARN" <<'PY' 2>/dev/null
 import json,sys
 from datetime import datetime,timezone
 try: from zoneinfo import ZoneInfo; TZ=ZoneInfo("Europe/Rome")
@@ -73,15 +63,10 @@ if d:
     # → riscrivo" ripetuto su OGNI sessione (AP-006/AP-074): la regola va vista qui, a monte, non
     # scoperta dopo aver già composto il testo.
     parts.append("Per scrivere: news.sh post|to <tipo> \"<sintesi>\" [refs] — sintesi ≤500 char DAVVERO (il gate RIFIUTA, non tronca: scegli tu cosa conta, dettaglio esteso in refs/docs/handoff).")
-inbox_path = sys.argv[2]
-if inbox_path:
-    try: raw=[json.loads(l) for l in open(inbox_path) if l.strip()]
-    except Exception: raw=[]
-    if raw:
-        ilines=[f"  {e.get('kind','evento')} da {e.get('session','?')} — {e.get('eid') or e.get('resource') or ''} ({str(e.get('seenAt',''))[:16]})" for e in raw[-10:]]
-        parts.append("COORDINAMENTO per te (AP-060/062, drenato dall'inbox — news.sh mine per il dettaglio):\n"+"\n".join(ilines))
+mqtt_warn = sys.argv[2] if len(sys.argv) > 2 else ""
+if mqtt_warn:
+    parts.append("⚠ COORDINAMENTO (AP-062): " + mqtt_warn)
 if not parts: sys.exit(0)
 print(json.dumps({"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"\n\n".join(parts)}}))
 PY
 rm -f "$T"
-[ -n "$INBOX" ] && : > "$INBOX" 2>/dev/null   # drena: consumato, riparte vuoto (best-effort, mai bloccante)
