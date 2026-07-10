@@ -62,6 +62,17 @@ if cfg["hooks"].get("PreToolUse") != wanted:
 PYEOF
 fi
 
-ctx="Repo '$repo' agganciato a henaxis-playbook ($ver). Leggi l'orientamento in cima a CLAUDE.md: usa PLAYBOOK (regole+strumenti) E docs/ (modulo, Serena, finalita) — ENTRAMBI, non sottovalutarne nessuno. Serena MCP attivo per i simboli del codice (usa i tool serena invece di leggere a tappeto). Deleghe agentiche solo con TASK-CONTRACT; PROD e' fonte di verita (AP-040, gate umano). PRESIDIO (AP-046): heartbeat AUTO eseguito per '$repo'; prima di IMPLEMENTARE in un ALTRO progetto verifica il presidio (tools/presence.sh check <repo>); se e' di un'altra sessione, INSTRADA il lavoro li (news/handoff). Nomina la sessione: tools/presence.sh claim <repo> <nome> (il nome appare sulla board). COORDINAMENTO (AP-062): il listener event-driven si e' auto-armato in background (coord-listen.mjs, nessuna azione richiesta); diretti/escalation per te appaiono gia' ad ogni prompt (news-hook), niente da fare per riceverli."
+# COORDINAMENTO (AP-062, gap chiuso 2026-07-10): coord-listen.mjs (auto-armato sopra) scrive
+# fedelmente il trigger ~/.coord/<hex8>/wake sugli eventi diretti/escalation — ma nessun bash-hook
+# puo' armare un Monitor per conto della sessione (e' un'azione agentica, non automatizzabile da
+# shell). SENZA quel Monitor esplicito, il file cambia nel vuoto e l'umano deve chiedere a voce
+# ("leggi le news") — lo stesso polling-mascherato-da-evento che AP-062 vieta. Istruzione diretta
+# alla sessione, non solo un promemoria: verificalo ORA.
+if [ "${#HEX}" -eq 8 ]; then
+  coord_note="COORDINAMENTO (AP-062): il listener coord-listen.mjs e' auto-armato in background, MA nessun bash-hook puo' armare per te il Monitor che lo osserva — e' un'azione agentica che DEVI fare tu ora: prima TaskList (se un Monitor sul wake trigger e' gia' attivo, non riarmarlo); altrimenti arma un Monitor persistente che polla/tail ~/.coord/$HEX/wake (o inotifywait -m se disponibile) — senza, diretti/escalation restano invisibili finche' l'umano non te lo dice a voce (gap reale gia' successo)."
+else
+  coord_note="COORDINAMENTO (AP-062): listener event-driven disponibile ma CLAUDE_CODE_SESSION_ID assente in questa esecuzione, niente hex8 su cui armare il Monitor."
+fi
+ctx="Repo '$repo' agganciato a henaxis-playbook ($ver). Leggi l'orientamento in cima a CLAUDE.md: usa PLAYBOOK (regole+strumenti) E docs/ (modulo, Serena, finalita) — ENTRAMBI, non sottovalutarne nessuno. Serena MCP attivo per i simboli del codice (usa i tool serena invece di leggere a tappeto). Deleghe agentiche solo con TASK-CONTRACT; PROD e' fonte di verita (AP-040, gate umano). PRESIDIO (AP-046): heartbeat AUTO eseguito per '$repo'; prima di IMPLEMENTARE in un ALTRO progetto verifica il presidio (tools/presence.sh check <repo>); se e' di un'altra sessione, INSTRADA il lavoro li (news/handoff). Nomina la sessione: tools/presence.sh claim <repo> <nome> (il nome appare sulla board). $coord_note"
 # ctx privo di doppi apici/newline -> JSON sicuro senza escaping
 printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
