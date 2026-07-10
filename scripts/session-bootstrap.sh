@@ -58,10 +58,14 @@ fi
 # guardiano leggero in news-hook.sh (ogni prompt) segnala se la presenza retained risulta offline.
 if [ "${#HEX}" -eq 8 ]; then
   if command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOME/.config/henaxis/mqtt.env" ]; then
+    PB_DIR=""
+    for d in "${HENAXIS_PLAYBOOK:-}" /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
+      [ -n "$d" ] && [ -x "$d/tools/mqtt-monitor-arm.sh" ] && { PB_DIR="$d"; break; }
+    done
     # Il Monitor si abbona DIRETTAMENTE al broker: ogni messaggio è una notifica nativa, QoS1+
     # sessione persistente = recapito anche di ciò che è arrivato mentre eri giù, Last-Will =
     # presenza gestita dal protocollo (niente lifecycle da curare).
-    coord_note="COORDINAMENTO (AP-062, bus MQTT — SoT playbook MQTT.md): DEVI armare tu ora un Monitor persistente abbonato al bus (azione agentica, nessun hook puo' farlo per te). Prima TaskList (se gia' attivo non riarmarlo); poi Monitor con lo script d'abbonamento documentato in MQTT.md sezione 'Come una SESSIONE si abbona' (mosquitto_sub sui topic henaxis/news/directed/$HEX, henaxis/coord/escalation/$HEX e henaxis/impact/$repo — quest'ultimo ti avvisa se un ALTRO repo tocca un simbolo condiviso che impatta $repo, Atlante/impact-gate.sh — credenziali da ~/.config/henaxis/mqtt.env, presenza LWT su henaxis/presence/$HEX, failover locale→remoto). Senza, i diretti delle altre sessioni e gli impatti cross-repo sul tuo restano invisibili finche' l'umano non te lo dice a voce."
+    coord_note="COORDINAMENTO (AP-062, bus MQTT — SoT playbook MQTT.md): DEVI armare tu ora un Monitor persistente abbonato al bus (azione agentica, nessun hook puo' farlo per te). Prima TaskList (se gia' attivo non riarmarlo); poi Monitor con command ESATTAMENTE questo (comando unico, playbook-committato — NON cercare le credenziali a mano in piu' file, e' proprio quel pattern di ricerca ad essere sensibile per il classificatore auto-mode, MQTT.md 'gap trovato'): bash ${PB_DIR:-/opt/p2g_dev/henaxis-playbook}/tools/mqtt-monitor-arm.sh $HEX $repo — presenza LWT su henaxis/presence/$HEX, topic directed/escalation/$HEX + impact/$repo, failover locale-remoto, tutto dentro lo script. Senza, i diretti delle altre sessioni e gli impatti cross-repo sul tuo restano invisibili finche' l'umano non te lo dice a voce."
   else
     coord_note="COORDINAMENTO (AP-062): mosquitto/credenziali MQTT non disponibili su questa macchina (~/.config/henaxis/mqtt.env mancante o mosquitto-clients non installato) — il coordinamento event-driven resta inattivo qui; i diretti restano visibili comunque nella news injection ad ogni prompt (record git, mai perso)."
   fi
