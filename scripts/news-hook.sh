@@ -31,6 +31,15 @@ INBOX=""
 # mai blocca il prompt.
 if [ "${#HEX}" -eq 8 ] && command -v node >/dev/null 2>&1; then
   LDIR="$COORD_DIR/$HEX"; mkdir -p "$LDIR" 2>/dev/null
+  # session.pid = PID del `claude` di questa sessione (auto-morte distribuita del listener, no SPOF).
+  _cpid=""; _p="$PPID"
+  for _ in 1 2 3 4 5 6 7 8; do
+    [ -r "/proc/$_p/comm" ] || break
+    [ "$(cat "/proc/$_p/comm" 2>/dev/null)" = "claude" ] && { _cpid="$_p"; break; }
+    _p="$(awk '/^PPid:/{print $2}' "/proc/$_p/status" 2>/dev/null)"
+    [ -n "$_p" ] && [ "$_p" -gt 1 ] 2>/dev/null || break
+  done
+  [ -n "$_cpid" ] && printf '%s\n' "$_cpid" > "$LDIR/session.pid" 2>/dev/null
   LPID="$LDIR/listener.pid"
   if ! { [ -s "$LPID" ] && kill -0 "$(cat "$LPID" 2>/dev/null)" 2>/dev/null; }; then
     if [ -r "$PB/tools/coord-listen.mjs" ]; then

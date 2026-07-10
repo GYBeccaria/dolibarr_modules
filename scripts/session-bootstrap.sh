@@ -24,6 +24,18 @@ if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
   if [ "${#HEX}" -eq 8 ] && command -v node >/dev/null 2>&1; then
     COORD_DIR="${HENAXIS_COORD_DIR:-$HOME/.coord}/$HEX"
     mkdir -p "$COORD_DIR" 2>/dev/null
+    # session.pid = PID del processo `claude` di QUESTA sessione (risalgo l'ancestry /proc dal hook):
+    # è il segnale di AUTO-MORTE distribuita del listener (coord-listen.mjs esce quando questo PID
+    # muore) — niente reaper centrale, niente SPOF. Best-effort: se non risolvo il PID, non scrivo
+    # il file e il listener resta senza auto-morte (fail-safe, comportamento storico).
+    _cpid=""; _p="$PPID"
+    for _ in 1 2 3 4 5 6 7 8; do
+      [ -r "/proc/$_p/comm" ] || break
+      [ "$(cat "/proc/$_p/comm" 2>/dev/null)" = "claude" ] && { _cpid="$_p"; break; }
+      _p="$(awk '/^PPid:/{print $2}' "/proc/$_p/status" 2>/dev/null)"
+      [ -n "$_p" ] && [ "$_p" -gt 1 ] 2>/dev/null || break
+    done
+    [ -n "$_cpid" ] && printf '%s\n' "$_cpid" > "$COORD_DIR/session.pid" 2>/dev/null
     PIDFILE="$COORD_DIR/listener.pid"
     if ! { [ -s "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; }; then
       for d in "${HENAXIS_PLAYBOOK:-}" /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
