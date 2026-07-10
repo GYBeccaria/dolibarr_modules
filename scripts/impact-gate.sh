@@ -62,6 +62,15 @@ for h in hits[:5]: print(f\"    {h['repo']}/{h['file']}:{h['line']} (in {h.get('
   tag=""; [ "$risk" = HIGH ] && { hard=1; hard_syms="$hard_syms $s"; tag=" [ALTO RISCHIO: ≥2 call-site, confidenza alta → HARD-BLOCK]"; }
   echo "  • $s — $n call-site CROSS-REPO$tag:" >&2
   printf '%s\n' "$result" | tail -n +3 >&2
+  # Notify Atlante sul bus (henaxis/impact/<repo-impattato>, MQTT.md): i repo i cui call-site
+  # stanno per essere toccati vengono annunciati — visibilità live per tecnici/sala di controllo
+  # (l'abbonamento per-repo delle sessioni è un'estensione futura). Best-effort, mai blocca.
+  if command -v mqtt_pub >/dev/null 2>&1; then
+    _repo_self="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+    printf '%s\n' "$result" | tail -n +3 | grep -oE '^\s+[A-Za-z0-9._-]+/' | tr -d ' /' | sort -u | while read -r _hit_repo; do
+      [ -n "$_hit_repo" ] && mqtt_pub "henaxis/impact/$_hit_repo" "{\"symbol\":\"$s\",\"fromRepo\":\"$_repo_self\",\"crossCallsites\":$n,\"risk\":\"$risk\",\"session\":\"$(henaxis_ses 2>/dev/null || echo cli)\"}"
+    done
+  fi
 done
 
 [ "$warned" -eq 1 ] && {
