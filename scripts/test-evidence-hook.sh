@@ -11,7 +11,7 @@ set -uo pipefail
 
 _self="$(readlink -f "$0" 2>/dev/null || echo "$0")"
 PLAYBOOK=""
-for _pb in "${HENAXIS_PLAYBOOK:-}" "$(dirname "$_self")/.." /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
+for _pb in "${HENAXIS_PLAYBOOK:-}" "$(dirname "$_self")/.." /opt/henaxis-playbook "$HOME/henaxis-playbook"; do
   [ -n "$_pb" ] && [ -r "$_pb/tools/hm-test.sh" ] && { PLAYBOOK="$_pb"; break; }
 done
 [ -n "$PLAYBOOK" ] && [ -r "$PLAYBOOK/test-commands.json" ] || exit 0

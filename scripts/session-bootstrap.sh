@@ -15,7 +15,7 @@ repo=$(basename "$(pwd)")
 HEX=""
 if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
   HEX="$(printf '%s' "$CLAUDE_CODE_SESSION_ID" | tr -cd '0-9a-f' | cut -c1-8)"
-  for d in "${HENAXIS_PLAYBOOK:-}" /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
+  for d in "${HENAXIS_PLAYBOOK:-}" /opt/henaxis-playbook "$HOME/henaxis-playbook"; do
     [ -n "$d" ] && [ -x "$d/tools/presence.sh" ] && { ( bash "$d/tools/presence.sh" heartbeat "$repo" >/dev/null 2>&1 & ) ; break; }
   done
   # Coordinamento event-driven: bus MQTT (MQTT.md). L'auto-arm di un processo listener bash-side
@@ -59,19 +59,31 @@ fi
 if [ "${#HEX}" -eq 8 ]; then
   if command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOME/.config/henaxis/mqtt.env" ]; then
     PB_DIR=""
-    for d in "${HENAXIS_PLAYBOOK:-}" /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
+    for d in "${HENAXIS_PLAYBOOK:-}" /opt/henaxis-playbook "$HOME/henaxis-playbook"; do
       [ -n "$d" ] && [ -x "$d/tools/mqtt-monitor-arm.sh" ] && { PB_DIR="$d"; break; }
     done
     # Il Monitor si abbona DIRETTAMENTE al broker: ogni messaggio è una notifica nativa, QoS1+
     # sessione persistente = recapito anche di ciò che è arrivato mentre eri giù, Last-Will =
     # presenza gestita dal protocollo (niente lifecycle da curare).
-    coord_note="COORDINAMENTO (AP-062, bus MQTT — SoT playbook MQTT.md): DEVI armare tu ora un Monitor persistente abbonato al bus (azione agentica, nessun hook puo' farlo per te). Prima TaskList (se gia' attivo non riarmarlo); poi Monitor con command ESATTAMENTE questo (comando unico, playbook-committato — NON cercare le credenziali a mano in piu' file, e' proprio quel pattern di ricerca ad essere sensibile per il classificatore auto-mode, MQTT.md 'gap trovato'): bash ${PB_DIR:-/opt/p2g_dev/henaxis-playbook}/tools/mqtt-monitor-arm.sh $HEX $repo — presenza LWT su henaxis/presence/$HEX, topic directed/escalation/$HEX + impact/$repo, failover locale-remoto, tutto dentro lo script. Senza, i diretti delle altre sessioni e gli impatti cross-repo sul tuo restano invisibili finche' l'umano non te lo dice a voce."
+    coord_note="COORDINAMENTO (AP-062, bus MQTT — SoT playbook MQTT.md): DEVI armare tu ora un Monitor persistente abbonato al bus (azione agentica, nessun hook puo' farlo per te). Prima TaskList (se gia' attivo non riarmarlo); poi Monitor con command ESATTAMENTE questo (comando unico, playbook-committato — NON cercare le credenziali a mano in piu' file, e' proprio quel pattern di ricerca ad essere sensibile per il classificatore auto-mode, MQTT.md 'gap trovato'): bash ${PB_DIR:-/opt/henaxis-playbook}/tools/mqtt-monitor-arm.sh $HEX $repo — presenza LWT su henaxis/presence/$HEX, topic directed/escalation/$HEX + impact/$repo, failover locale-remoto, tutto dentro lo script. Senza, i diretti delle altre sessioni e gli impatti cross-repo sul tuo restano invisibili finche' l'umano non te lo dice a voce."
   else
     coord_note="COORDINAMENTO (AP-062): mosquitto/credenziali MQTT non disponibili su questa macchina (~/.config/henaxis/mqtt.env mancante o mosquitto-clients non installato) — il coordinamento event-driven resta inattivo qui; i diretti restano visibili comunque nella news injection ad ogni prompt (record git, mai perso)."
   fi
 else
   coord_note="COORDINAMENTO (AP-062): listener event-driven disponibile ma CLAUDE_CODE_SESSION_ID assente in questa esecuzione, niente hex8 su cui armare il Monitor."
 fi
-ctx="Repo '$repo' agganciato a henaxis-playbook ($ver). Leggi l'orientamento in cima a CLAUDE.md: usa PLAYBOOK (regole+strumenti) E docs/ (modulo, Serena, finalita) — ENTRAMBI, non sottovalutarne nessuno. Serena MCP attivo per i simboli del codice (usa i tool serena invece di leggere a tappeto). Deleghe agentiche solo con TASK-CONTRACT; PROD e' fonte di verita (AP-040, gate umano). PRESIDIO (AP-046): heartbeat AUTO eseguito per '$repo'; prima di IMPLEMENTARE in un ALTRO progetto verifica il presidio (tools/presence.sh check <repo>); se e' di un'altra sessione, INSTRADA il lavoro li (news/handoff). Nomina la sessione: tools/presence.sh claim <repo> <nome> (il nome appare sulla board). $coord_note"
+# IDENTITÀ/TWIN (onboarding via bus, NEW-PROJECT.md §3-bis — pattern WoT TD/digital twin):
+# se esiste un descrittore retained per questo repo, la sessione sa CHI È dal primo prompt,
+# anche prima di leggere i file. Best-effort, mai blocca l'avvio.
+TWIN=""
+if command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOME/.config/henaxis/mqtt.env" ]; then
+  . "$HOME/.config/henaxis/mqtt.env" 2>/dev/null
+  if [ -n "${MQTT_USER:-}" ]; then
+    TWIN="$(timeout 3 mosquitto_sub -h "${MQTT_LOCAL%%:*}" -p "${MQTT_LOCAL##*:}" -u "$MQTT_USER" -P "$MQTT_PASS" -t "henaxis/onboarding/$repo" -C 1 -W 2 2>/dev/null | tr -d '"' | tr '\n' ' ' | cut -c1-900)"
+  fi
+fi
+twin_note=""
+[ -n "$TWIN" ] && twin_note=" IDENTITA-TWIN (henaxis/onboarding/$repo, retained): $TWIN"
+ctx="Repo '$repo' agganciato a henaxis-playbook ($ver). Leggi l'orientamento in cima a CLAUDE.md: usa PLAYBOOK (regole+strumenti) E docs/ (modulo, Serena, finalita) — ENTRAMBI, non sottovalutarne nessuno. Serena MCP attivo per i simboli del codice (usa i tool serena invece di leggere a tappeto). Deleghe agentiche solo con TASK-CONTRACT; PROD e' fonte di verita (AP-040, gate umano). PRESIDIO (AP-046): heartbeat AUTO eseguito per '$repo'; prima di IMPLEMENTARE in un ALTRO progetto verifica il presidio (tools/presence.sh check <repo>); se e' di un'altra sessione, INSTRADA il lavoro li (news/handoff). Nomina la sessione: tools/presence.sh claim <repo> <nome> (il nome appare sulla board). $coord_note$twin_note"
 # ctx privo di doppi apici/newline -> JSON sicuro senza escaping
 printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"

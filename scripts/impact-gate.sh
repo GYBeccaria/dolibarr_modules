@@ -12,7 +12,7 @@ set -uo pipefail
 [ -z "${HENAXIS_PLAYBOOK:-}" ] && [ -r "$HOME/.config/henaxis/config.env" ] && \
   HENAXIS_PLAYBOOK=$(sed -n -E 's/^(export[[:space:]]+)?HENAXIS_PLAYBOOK=["'"'"']?([^"'"'"' ]+).*/\2/p' "$HOME/.config/henaxis/config.env" | tail -1)
 _self="$(readlink -f "$0" 2>/dev/null || echo "$0")"
-for _pb in "${HENAXIS_PLAYBOOK:-}" "$(dirname "$_self")/.." /opt/p2g_dev/henaxis-playbook "$HOME/henaxis-playbook"; do
+for _pb in "${HENAXIS_PLAYBOOK:-}" "$(dirname "$_self")/.." /opt/henaxis-playbook "$HOME/henaxis-playbook"; do
   [ -n "$_pb" ] && [ -r "$_pb/tools/lib-henaxis.sh" ] && { . "$_pb/tools/lib-henaxis.sh"; break; }
 done
 URL="${HM_METRICS_URL:-}"
