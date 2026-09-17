@@ -17,6 +17,11 @@ Hai **due corpi di conoscenza complementari**: usali **entrambi**, non sottovalu
 - **DOCS/ del repo (verticale = *cos'è questo modulo*)**: `docs/README` (mappa), `docs/decisions.md` (DD),
   `docs/handoff/`, `docs/tech/` (note tecniche, PROD, integrazioni, `TOOLS.md` del repo).
 - **Codice reale → indice Serena** (`.serena/`, vedi `SERENA.md`): naviga simboli/riferimenti invece di leggere a tappeto.
+- **Anti-pattern → a richiesta, non a tappeto.** L'indice è `ANTIPATTERNS-INDEX.md` (un rigo per AP, basta a
+  decidere *se* guardare); la voce intera si tira con `node <playbook>/tools/ap.mjs AP-042` (o una parola, o il
+  numero nudo). Funziona con o senza skill: chi le supporta ha `skills/antipattern`, che chiama lo **stesso**
+  strumento e non contiene una copia del catalogo. Gli AP che non devono dipendere dall'essere letti sono
+  imposti da gate e hook, che scattano comunque.
 
 > **Regola di non-sottovalutazione**: *playbook senza `docs/` = regole senza contesto; `docs/` senza playbook =
 > contesto senza regole né strumenti.* Servono **entrambi**, sempre.
@@ -40,11 +45,12 @@ Hai **due corpi di conoscenza complementari**: usali **entrambi**, non sottovalu
 - Shell: verifica i tool prima di usarli (AP-028); `gh api --jq`, non pipe fragili (AP-033); `$VAR`, mai `<X>` (AP-031); niente git sporco su bind-mount live (AP-027).
 - API/framework: consulta le **fonti canoniche** (REFERENCES.md), non la memoria. Core Dolibarr pinnato **22.0.3**.
 - **PROD/runtime è la fonte di verità** (`main` ≠ deployed): deploy SOLO via wrapper per-intervento, mai overwrite/`--force` — contratto **DEPLOY.md** (AP-040). Riferimenti PROD sempre **espliciti**: host + IP + ruolo + container/DB (AP-042).
-- **News**: canale unico `origin/news`; `post` con esito **"PUSHATA"** verificato; type da **enum** (deploy/decision/rules/tool/progress/incident/handoff/info), sintesi ≤500 char, refs per deploy/decision — gate applicato da `news.sh` — protocollo **NEWS.md** (AP-043/047).
+- **News**: canale unico `origin/news`; `post` con esito **"PUSHATA"** verificato; type da **enum** (deploy/decision/rules/tool/progress/incident/handoff/info), sintesi ~500 char (mai rifiutata: >1200 auto-spill in nota), refs per deploy/decision — gate applicato da `news.sh` — protocollo **NEWS.md** (AP-043/047/074).
 - **Kanban & presidio**: task su `tasks.json` via `task.sh`; DoD = **LIVE & verificato**, non solo merged; presidio TTL 24h, auto-heartbeat — **KANBAN.md** (AP-046/048/054).
 - **Bump versione a ogni modifica frontend** nello stesso commit, visibile in UI (AP-045).
 - **Delega agentica solo con contratto** (TASK-CONTRACT.md): scope + tool whitelist + gate macchina + checkpoint; l'agente non auto-dichiara "fatto" (AP-041).
 - **Tool**: prima di scrivere uno script consulta **TOOLS.md** (+ `docs/tech/TOOLS.md` del repo); tool nuovo/esteso → registro con provenienza + news (AP-056). **Mai errori/codici nudi, sempre spiegazioni**: ogni rifiuto di gate/tool/UI dice cosa è fallito, perché (AP) e il fix copiabile (AP-057).
+- **Prompt minimi di risveglio** («aggiornati», «news», «fai quello che devi»…): sono un **ordine di eseguire**, non una domanda — l'hook inietta l'orientamento completo (twin, presidio, diretti, handoff, **e i TUOI task**: in-corso di tua proprietà + disponibili nel tuo perimetro; SESSION-AUTOMATION.md). Da lì **GUIDA i tuoi task — falne avanzare almeno UNO ORA**, non solo orientarti. Mai rispondere chiedendo "cosa vuoi che faccia". **Un task in-corso bloccato si DICHIARA sul canale e si scavalca con un disponibile — non giustifica l'attesa**; ci si ferma SOLO ai gate umani (PROD/deploy/transfer/delete/decisioni irreversibili). L'inerzia in attesa del via umano è un anti-pattern, non prudenza (AP-076).
 
 ## Precedenza
 In caso di conflitto, **queste convenzioni condivise prevalgono** sul contenuto locale del

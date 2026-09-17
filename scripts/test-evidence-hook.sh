@@ -16,7 +16,20 @@ for _pb in "${HENAXIS_PLAYBOOK:-}" "$(dirname "$_self")/.." /opt/henaxis-playboo
 done
 [ -n "$PLAYBOOK" ] && [ -r "$PLAYBOOK/test-commands.json" ] || exit 0
 
-REPO="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+# IL NOME DEL REPO NON E' IL BASENAME DELLA DIRECTORY. In un git worktree il toplevel e' la
+# cartella del worktree («etich», «resync», «allenamento»), non il repo — e questo hook diceva
+# «non ha un comando registrato» e SALTAVA la batteria. Effetto reale misurato da manager-hwlab
+# il 2026-09-03: un selftest ROSSO (41 controlli, 1 fallito) pushato e mergiato su main perche'
+# il pre-push non l'ha mai eseguito. Con la norma «un worktree per sessione» lo skip colpiva
+# OGNI push di sessione: la norma di igiene spegneva il gate di verifica.
+# Si risale al repo VERO dal git-common-dir (il .git condiviso fra i worktree); il basename resta
+# solo come ultima spiaggia per i casi che il common-dir non copre.
+COMMON="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+if [ -n "$COMMON" ] && [ "$(basename "$COMMON")" = ".git" ]; then
+  REPO="$(basename "$(dirname "$COMMON")")"
+else
+  REPO="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+fi
 SHA="$(git rev-parse HEAD 2>/dev/null || true)"
 [ -n "$SHA" ] || exit 0
 
@@ -56,16 +69,27 @@ if [ -z "${CMD:-}" ]; then
   exit 0
 fi
 
+# IL GATE NON PRESTA IL PROPRIO AMBIENTE ALLA SUITE. Durante un pre-push git esporta GIT_DIR (e
+# sorelle) nell'ambiente dell'hook: una batteria che fa `git init` in un mktemp EREDITA quelle
+# variabili e ogni suo `git` opera SUL REPO VERO credendosi nel banco. Successo il 2026-09-03,
+# dieci minuti dopo il fix dei worktree: `git add -A` lanciato da un banco ha committato un albero
+# di DUE file sul ramo in push di henax-hwlab, e main e' rimasto cosi' per 25 minuti (misurato
+# dalla pm: «80 → 2 file»). Diagnosi e proposta di manager-hwlab. Vale per OGNI batteria che fa
+# git dentro un banco, quindi la pulizia sta QUI, una volta, e non in ogni suite.
+mapfile -t _GITVARS < <(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p')
+AMBIENTE_PULITO=(env)
+for _v in "${_GITVARS[@]}"; do AMBIENTE_PULITO+=(-u "$_v"); done
+
 if [ "$SELF" = "1" ]; then
   # il comando possiede il proprio run (run-start/test/run-end): eseguilo, non wrapparlo.
-  bash -c "$CMD"; RC=$?
+  "${AMBIENTE_PULITO[@]}" bash -c "$CMD"; RC=$?
   [ "$RC" -eq 0 ] || echo "⚠ test-evidence-hook: '$REPO' — battery self-reporting FALLITA (l'ha riportata lei come no-go, push NON bloccato)." >&2
   exit 0
 fi
 
 RID="$(bash "$PLAYBOOK/tools/hm-test.sh" run-start "$REPO" dev full pre-push-hook "$SHA" 2>/dev/null)"
 [ -n "$RID" ] || exit 0
-bash "$PLAYBOOK/tools/hm-test.sh" wrap "$RID" "pre-push auto ($METH)" "$METH" -- bash -c "$CMD"
+bash "$PLAYBOOK/tools/hm-test.sh" wrap "$RID" "pre-push auto ($METH)" "$METH" -- "${AMBIENTE_PULITO[@]}" bash -c "$CMD"
 RC=$?
 bash "$PLAYBOOK/tools/hm-test.sh" run-end "$RID" "$([ "$RC" -eq 0 ] && echo go || echo no-go)" >/dev/null 2>&1
 [ "$RC" -eq 0 ] || echo "⚠ test-evidence-hook: '$REPO' — comando registrato FALLITO (riportato no-go onestamente, push NON bloccato)." >&2

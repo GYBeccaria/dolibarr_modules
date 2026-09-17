@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
-"""serena-gate-hook.py — PreToolUse (Bash): blocca grep/git grep su codice sorgente quando
-Serena è configurata per il repo, a meno di un override esplicito e motivato.
+"""serena-gate-hook.py — PreToolUse (Bash), il gate condiviso del tool Bash. Due regole:
+1. blocca grep/git grep su codice sorgente quando Serena è configurata per il repo,
+   a meno di un override esplicito e motivato (SERENA_GREP_OK);
+2. blocca mqtt-monitor-arm.sh lanciato via Bash: va nel campo `command` del tool Monitor
+   (persistent), MAI come processo bash — lanciato a mano si abbona al bus ma NON notifica
+   la sessione (coordinamento silenziosamente rotto mentre sembra armato) e alla morte del
+   processo padre resta orfano con la LWT retained "online" che mente (visto 2 volte:
+   sess-e8634288 orfani il 14/07, riarmo p2g-dev lo stesso giorno — "non deve ripetersi
+   mai più", ordine umano). Override motivato: MONITOR_ARM_BASH_OK (solo debug script).
 
 Riscrittura del v1 bash (serena-gate-hook.sh, regex su TUTTA la stringa comando) dopo aver
 trovato in sessione tre classi di falso positivo che una regex-su-stringa non può risolvere
@@ -28,6 +35,7 @@ Contratto hook Claude Code: stdin = payload JSON. Exit 2 = blocca (stderr = cont
 = via libera. Fail-open ovunque manchi un prerequisito.
 """
 import json
+import shutil
 import os
 import re
 import shlex
@@ -52,12 +60,51 @@ def read_payload():
         return {}
 
 
+def serena_usabile():
+    """Serena esiste su questa macchina? L'ASSENZA del binario prova che non puo' rispondere.
+
+    E' il minimo verificabile a costo zero. La presenza non prova che risponda — quello lo
+    proverebbe solo una chiamata vera — ma bloccare `grep` rimandando a strumenti che NON ESISTONO
+    e' un danno certo, e su questa distinzione il gate deve stare dalla parte prudente.
+    """
+    if shutil.which("serena"):
+        return True
+    return any(os.path.isfile(c) and os.access(c, os.X_OK) for c in (
+        os.path.expanduser("~/.local/bin/serena"), "/usr/local/bin/serena"))
+
+
 def find_serena_yml(start_dir):
     d = os.path.abspath(start_dir)
     for _ in range(6):
+        # UN FILE DI CONFIGURAZIONE NON PROVA CHE LO STRUMENTO FUNZIONI (AP-095). Questo gate
+        # bloccava `grep` perche' `.serena/project.yml` ESISTE, e rimandava a `find_symbol` su una
+        # macchina dove serena non e' nemmeno installata: due override a verbale in venti minuti
+        # (designer-hwlab, 2026-09-01). La presenza del binario non prova che serena risponda, ma
+        # la sua ASSENZA prova che non puo': e' il minimo verificabile a costo zero, e va fatto.
         candidate = os.path.join(d, ".serena", "project.yml")
         if os.path.isfile(candidate):
             return candidate
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return None
+
+
+# Estensioni-sorgente usate SOLO nel ramo "repo non indicizzato", dove non esiste un
+# project.yml da cui leggerle. Volutamente conservativa: un falso negativo qui costa un
+# avviso mancato, un falso positivo costerebbe rumore su ogni grep di log o di prosa.
+DEFAULT_SOURCE_EXTS = (
+    ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".php", ".go", ".rs", ".java",
+    ".rb", ".c", ".h", ".cpp", ".hpp", ".cs", ".swift", ".kt", ".scala", ".sh", ".bash",
+)
+
+
+def find_git_root(start_dir):
+    d = os.path.abspath(start_dir)
+    for _ in range(8):
+        if os.path.isdir(os.path.join(d, ".git")):
+            return d
         parent = os.path.dirname(d)
         if parent == d:
             break
@@ -134,6 +181,22 @@ def log_override(reason, command):
         pass
 
 
+def monitor_arm_block_message():
+    return """✗ Gate Monitor — mqtt-monitor-arm.sh lanciato via Bash invece che nel tool Monitor.
+  Perché: via Bash il processo si abbona al bus ma NON notifica la sessione (i diretti/escalation
+  arrivano al processo, non a te: coordinamento silenziosamente rotto mentre sembra armato) e alla
+  chiusura del processo padre resta ORFANO con la presenza LWT retained "online" che mente
+  (successo davvero: orfani sess-e8634288, 14/07). In più la password resta negli argv di un
+  processo fuori dal lifecycle tracciato.
+  Fix (copiabile): usa il tool Monitor con command ESATTAMENTE:
+    bash /opt/henaxis-playbook/tools/mqtt-monitor-arm.sh <hex8> [repo]
+  (persistent; prima TaskList per non duplicarlo — SoT: MQTT.md, sezione abbonamento sessione).
+  Se stai facendo DEBUG dello script stesso (unico caso legittimo via Bash), ripeti il comando
+  preceduto da: MONITOR_ARM_BASH_OK="<motivo>" — resta a verbale in
+  ~/.claude/serena-gate/overrides.log.
+"""
+
+
 def block_message(serena_yml):
     return f"""✗ Gate Serena — grep su codice sorgente in un repo dove Serena è configurata ({serena_yml}).
   Perché: grep trova STRINGHE, Serena/GitNexus (hm-impact.sh) trovano SIMBOLI — referenze,
@@ -145,6 +208,22 @@ def block_message(serena_yml):
   Se questo grep è legittimo (log/dati/prosa/output di comandi, non navigazione di simboli),
   ripeti il comando preceduto da: SERENA_GREP_OK="<motivo>" — resta a verbale in
   ~/.claude/serena-gate/overrides.log (dato reale su quando grep serve davvero).
+"""
+
+
+def uncovered_message(repo_root):
+    return f"""⚠ Gate Serena — repo NON indicizzato: {repo_root}
+  Stai navigando codice sorgente con grep in un repo che NON ha .serena/project.yml, quindi
+  il gate non ti ha fermato — e questo e il difetto: il guardiano taceva proprio dove il
+  problema e peggiore. Un repo non indicizzato non e un repo esente: e un repo scoperto.
+  Perche conta: grep trova STRINGHE, Serena trova SIMBOLI (referenze, implementazioni,
+  impatto reale, anche cross-repo). Costo misurato (2026-07-08): un retrofit fatto a grep ha
+  perso 2 call-site su 14 che find_referencing_symbols ha trovato subito. La playbook
+  (SERENA.md, P2G-P-08) esige che OGNI repo sia Serena-ready: questo non lo e.
+  Fix: indicizza il repo (indice Serena + .mcp.json per-progetto, cfr. SERENA.md), poi usa
+  find_symbol / find_referencing_symbols / get_symbols_overview.
+  Questo e un AVVISO, non un blocco (AP-071: un cancello si certifica prima di renderlo
+  bloccante). Il tuo comando prosegue.
 """
 
 
@@ -161,9 +240,57 @@ def main():
         log_override(m.group(1), command)
         return 0
 
+    # Regola 2 — Monitor via Bash (indipendente da Serena: vale in OGNI repo agganciato).
+    # Match sul nome file in un token di comando (tokenizzato: una citazione tra virgolette
+    # in un commit message NON scatta — stessa lezione dei falsi positivi grep).
+    if "mqtt-monitor-arm" in command:
+        m = re.match(r'^\s*MONITOR_ARM_BASH_OK="([^"]*)"', command)
+        if m:
+            log_override("MONITOR_ARM: " + m.group(1), command)
+            return 0
+        # Blocca solo in POSIZIONE DI ESECUZIONE (primo token, o preceduto solo da
+        # interpreti/wrapper/flag): leggere lo script (head/cat/diff) non è armarlo.
+        EXEC_WRAPPERS = {"bash", "sh", "zsh", "dash", "nohup", "timeout", "setsid",
+                         "env", "exec", "command", "eval", "sudo"}
+        for segment in split_into_segments(command):
+            for i, tok in enumerate(segment):
+                if tok.rsplit("/", 1)[-1] != "mqtt-monitor-arm.sh":
+                    continue
+                before = segment[:i]
+                if all(t in EXEC_WRAPPERS or t.startswith("-") or t.isdigit() for t in before):
+                    sys.stderr.write(monitor_arm_block_message())
+                    return 2
+
     cwd = payload.get("cwd") or os.getcwd()
+
+    # SE SERENA NON ESISTE QUI, QUESTO GATE NON HA NULLA VERSO CUI RIMANDARE. Bloccava `grep`
+    # perche' `.serena/project.yml` ESISTE nel repo — un file di configurazione, che non prova che
+    # lo strumento funzioni (AP-095). Su una macchina senza serena il risultato e' un blocco che
+    # rimanda a `find_symbol`, che li' non esiste: designer-hwlab ha dovuto mettere a verbale due
+    # override in venti minuti. Un gate che costringe a scavalcarlo insegna a scavalcarlo.
+    if not serena_usabile():
+        sys.stderr.write(
+            "· gate Serena INATTIVO: serena non e' installata su questa macchina (cercata nel PATH, "
+            "in ~/.local/bin e /usr/local/bin). Il file .serena/project.yml del repo non prova che lo "
+            "strumento funzioni. Qui grep e read sono la via corretta, non una scorciatoia.\n")
+        return 0
+
     serena_yml = find_serena_yml(cwd)
     if not serena_yml:
+        # INVERSIONE CORRETTA (2026-07-26): "nessuna Serena configurata" NON puo significare
+        # "via libera silenziosa" — era un guardiano condizionato allo stato che deve garantire,
+        # quindi muto esattamente dove il problema e peggiore (codemeris-core, il core del
+        # prodotto, e senza indice: ci si greppa senza alcun attrito). Se siamo dentro un repo
+        # git e il grep tocca sorgente, si AVVISA (mai si blocca: AP-071) e si prosegue.
+        repo_root = find_git_root(cwd)
+        if repo_root:
+            for segment in split_into_segments(command):
+                args = grep_arguments(segment)
+                if args is None:
+                    continue
+                if any(has_source_ext(tok, DEFAULT_SOURCE_EXTS) for tok in args if not tok.startswith("-")):
+                    sys.stderr.write(uncovered_message(repo_root))
+                    break
         return 0
     exts = configured_extensions(serena_yml)
     if not exts:

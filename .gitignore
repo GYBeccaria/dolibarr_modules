@@ -2,3 +2,5 @@
 # Serena symbol cache (per-macchina, non versionata)
 .serena/cache/
 .claude/
+.serena/project.yml
+.serena/cache/

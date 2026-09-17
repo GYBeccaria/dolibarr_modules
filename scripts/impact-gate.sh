@@ -21,15 +21,44 @@ TOKEN="${HM_INGEST_TOKEN:-}"
 command -v curl >/dev/null 2>&1 || exit 0
 command -v python3 >/dev/null 2>&1 || exit 0
 
-# simboli DEFINITI toccati dal diff staged (righe +/- su file di codice): function/def/class/const-arrow.
+# Simboli DEFINITI toccati dal diff staged. TRE passate distinte, perché ognuna ha il nome in una
+# posizione diversa e una passata sola non può estrarlo:
+#   1. `function|def|class NOME`            → il nome è l'ULTIMO token del match
+#   2. `const|let|var NOME [: tipo] = (…)`  → il nome è il SECONDO token, e il match finisce con `(`
+#   3. `interface|type|enum NOME` (TS)      → ancorata a inizio riga, per non pescare la prosa
+#
+# La 2 era ROTTA da sempre: la regex la cercava (il commento diceva «const-arrow») ma l'estrattore
+# prendeva `[A-Za-z_]\w*$`, e un match che termina con `(` non ha un identificatore in fondo.
+# Risultato misurato: NESSUNA arrow function è mai stata coperta dal gate, in nessun linguaggio —
+# non è una lacuna di TypeScript, è una lacuna che TypeScript ha reso visibile.
+_gate_diff() {
+  git diff --cached -U0 --diff-filter=ACMR -- \
+    '*.php' '*.py' '*.js' '*.mjs' '*.cjs' '*.ts' '*.tsx' '*.jsx' 2>/dev/null \
+    | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)'
+}
 mapfile -t syms < <(
-  git diff --cached -U0 --diff-filter=ACMR -- '*.php' '*.py' '*.js' '*.mjs' '*.cjs' 2>/dev/null \
-    | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' \
-    | grep -oE '(function|def|class)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*|(const|let|var)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=[[:space:]]*(async[[:space:]]*)?(function|\()' \
-    | grep -oE '[A-Za-z_][A-Za-z0-9_]*$' \
-    | grep -vE '^(function|def|class|const|let|var|async|if|for|return|true|false|null)$' \
-    | sort -u | head -8
+  {
+    _gate_diff | grep -oE '(function|def|class)[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' \
+      | grep -oE '[A-Za-z_][A-Za-z0-9_]*$'
+    _gate_diff | sed -nE 's/.*(const|let|var)[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*(:[^=]*)?=[[:space:]]*(async[[:space:]]*)?(function|\().*/\2/p'
+    _gate_diff | sed -nE 's/^[+-][[:space:]]*(export[[:space:]]+)?(declare[[:space:]]+)?(abstract[[:space:]]+)?(interface|type|enum)[[:space:]]+([A-Za-z_][A-Za-z0-9_]*).*/\5/p'
+  } \
+    | grep -vE '^(function|def|class|const|let|var|async|if|for|return|true|false|null|interface|type|enum|export|declare|abstract|from|import|default|new|await|this|super)$' \
+    | LC_ALL=C sort -u
 )
+# LIMITE DICHIARATO (regex, non AST): un `const x: (a: T) => R = …` non viene estratto, perché
+# l'annotazione di tipo-funzione contiene `=>` e la regex non può attraversare quell'`=`.
+# La cura vera è l'estrazione per AST — dove vive il ponte codemappa, non qui.
+#
+# IL CAP SI DICHIARA, non si subisce: prima `head -8` scartava in silenzio, e un gate che
+# controlla 8 simboli su 12 senza dirlo afferma una copertura che non ha.
+_gate_tot="${#syms[@]}"
+if [ "$_gate_tot" -gt 8 ]; then
+  echo "⚠ impact-gate: $_gate_tot simboli toccati, ne controllo 8 (cap per non allungare il commit)." >&2
+  echo "  non controllati: ${syms[*]:8}" >&2
+  echo "  fix: spezza il commit (AP-003: due scope = due commit), oppure verificali a mano con tools/hm-impact.sh" >&2
+  syms=("${syms[@]:0:8}")
+fi
 [ "${#syms[@]}" -gt 0 ] || exit 0
 
 warned=0
@@ -44,7 +73,16 @@ for s in "${syms[@]}"; do
 import json,sys
 try: d=json.load(sys.stdin)
 except Exception: sys.exit(0)
-hits=[h for lvl in d.get('levels',[]) for h in lvl.get('hits',[]) if h.get('cross')]
+# SOLO PROFONDITÀ 1. La query chiede depth=2, ma la profondità ≥2 NON sono archi: sono SALTI-DI-NOME
+# — simboli che si chiamano allo stesso modo in un altro grafo, non chiamanti reali. Appiattire ogni
+# livello (\`for lvl in levels\`) li contava come call-site.
+#
+# Misurato il 2026-07-27, diagnosi di henaxmetrics sul servito: per \`attoreDi\` — funzione creata
+# dieci minuti prima e impossibile da chiamare altrove — depth 1 dava 12 hit tutti nel playbook
+# (corretti, e coincidenti con codemappa), depth 2 ne aggiungeva 28 in analgocard dentro \`badgeFor\`
+# e \`rowClass\`. Il gate bloccava un commit citando file e righe che non usano il simbolo: un allarme
+# falso con dettagli precisi è peggio di un allarme vago, perché è credibile.
+hits=[h for lvl in d.get('levels',[]) if lvl.get('depth')==1 for h in lvl.get('hits',[]) if h.get('cross')]
 if not hits: sys.exit(0)
 conf=hits[0].get('confidence','bassa')
 # ALTO RISCHIO: ≥2 call-site cross-repo E nessuna ambiguità (confidenza alta = 1 solo omonimo nel parco)
@@ -67,7 +105,7 @@ for h in hits[:5]: print(f\"    {h['repo']}/{h['file']}:{h['line']} (in {h.get('
   # (l'abbonamento per-repo delle sessioni è un'estensione futura). Best-effort, mai blocca.
   if command -v mqtt_pub >/dev/null 2>&1; then
     _repo_self="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
-    printf '%s\n' "$result" | tail -n +3 | grep -oE '^\s+[A-Za-z0-9._-]+/' | tr -d ' /' | sort -u | while read -r _hit_repo; do
+    printf '%s\n' "$result" | tail -n +3 | grep -oE '^\s+[A-Za-z0-9._-]+/' | tr -d ' /' | LC_ALL=C sort -u | while read -r _hit_repo; do
       [ -n "$_hit_repo" ] && mqtt_pub "henaxis/impact/$_hit_repo" "{\"symbol\":\"$s\",\"fromRepo\":\"$_repo_self\",\"crossCallsites\":$n,\"risk\":\"$risk\",\"session\":\"$(henaxis_ses 2>/dev/null || echo cli)\"}"
     done
   fi

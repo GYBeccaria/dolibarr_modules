@@ -12,12 +12,13 @@ repo=$(basename "$(pwd)")
 # Playbook config-driven (portabilità): env > ~/.config/henaxis/config.env > path convenzionali.
 [ -z "${HENAXIS_PLAYBOOK:-}" ] && [ -r "$HOME/.config/henaxis/config.env" ] && \
   HENAXIS_PLAYBOOK=$(sed -n -E 's/^(export[[:space:]]+)?HENAXIS_PLAYBOOK=["'"'"']?([^"'"'"' ]+).*/\2/p' "$HOME/.config/henaxis/config.env" | tail -1)
-HEX=""
+HEX=""; HB_LANCIATO=0
 if [ -n "${CLAUDE_CODE_SESSION_ID:-}" ]; then
   HEX="$(printf '%s' "$CLAUDE_CODE_SESSION_ID" | tr -cd '0-9a-f' | cut -c1-8)"
-  for d in "${HENAXIS_PLAYBOOK:-}" /opt/henaxis-playbook "$HOME/henaxis-playbook"; do
-    [ -n "$d" ] && [ -x "$d/tools/presence.sh" ] && { ( bash "$d/tools/presence.sh" heartbeat "$repo" >/dev/null 2>&1 & ) ; break; }
+  for d in "${HENAXIS_PLAYBOOK:-}" /opt/henaxis-playbook "$HOME/opt/henaxis-playbook"; do  # convenzione: /opt o ~/opt (senza root), mai glob
+    [ -n "$d" ] && [ -x "$d/tools/presence.sh" ] && { ( bash "$d/tools/presence.sh" heartbeat "$repo" >/dev/null 2>&1 & ) ; HB_LANCIATO=1; break; }
   done
+  [ "${HB_LANCIATO:-0}" = 1 ] || echo "⚠ session-bootstrap: PLAYBOOK NON TROVATA (HENAXIS_PLAYBOOK=${HENAXIS_PLAYBOOK:-<vuota>}): heartbeat NON lanciato, coordinamento cieco — sistema il percorso in ~/.config/henaxis/config.env" >&2
   # Coordinamento event-driven: bus MQTT (MQTT.md). L'auto-arm di un processo listener bash-side
   # è STATO RIMOSSO in F5 (2026-07-10) — l'unico meccanismo che funzionava davvero era il Monitor
   # agentico (armato più sotto via istruzione esplicita), non lo script coord-listen.mjs in sé, che
@@ -59,7 +60,7 @@ fi
 if [ "${#HEX}" -eq 8 ]; then
   if command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOME/.config/henaxis/mqtt.env" ]; then
     PB_DIR=""
-    for d in "${HENAXIS_PLAYBOOK:-}" /opt/henaxis-playbook "$HOME/henaxis-playbook"; do
+    for d in "${HENAXIS_PLAYBOOK:-}" /opt/henaxis-playbook "$HOME/opt/henaxis-playbook"; do  # convenzione: /opt o ~/opt (senza root), mai glob
       [ -n "$d" ] && [ -x "$d/tools/mqtt-monitor-arm.sh" ] && { PB_DIR="$d"; break; }
     done
     # Il Monitor si abbona DIRETTAMENTE al broker: ogni messaggio è una notifica nativa, QoS1+
@@ -84,6 +85,27 @@ if command -v mosquitto_sub >/dev/null 2>&1 && [ -r "$HOME/.config/henaxis/mqtt.
 fi
 twin_note=""
 [ -n "$TWIN" ] && twin_note=" IDENTITA-TWIN (henaxis/onboarding/$repo, retained): $TWIN"
-ctx="Repo '$repo' agganciato a henaxis-playbook ($ver). Leggi l'orientamento in cima a CLAUDE.md: usa PLAYBOOK (regole+strumenti) E docs/ (modulo, Serena, finalita) — ENTRAMBI, non sottovalutarne nessuno. Serena MCP attivo per i simboli del codice (usa i tool serena invece di leggere a tappeto). Deleghe agentiche solo con TASK-CONTRACT; PROD e' fonte di verita (AP-040, gate umano). PRESIDIO (AP-046): heartbeat AUTO eseguito per '$repo'; prima di IMPLEMENTARE in un ALTRO progetto verifica il presidio (tools/presence.sh check <repo>); se e' di un'altra sessione, INSTRADA il lavoro li (news/handoff). Nomina la sessione: tools/presence.sh claim <repo> <nome> (il nome appare sulla board). $coord_note$twin_note"
+# UN VERDE SENZA COMANDO DIETRO E' AP-001. La riga diceva «heartbeat AUTO eseguito» SEMPRE, anche
+# quando il ciclo non aveva trovato alcuna presence.sh — cioe' su ogni macchina dove la playbook non
+# sta nei percorsi convenzionali. Su fobos (2026-09-01) presence.json non aveva UNA riga per
+# quell'host, e il contesto dichiarava il heartbeat fatto. Trovato da designer-hwlab in dieci minuti
+# di vita. Ora la frase segue il fatto: lanciato / non lanciato, e nel secondo caso dice il rimedio.
+# LA STESSA CURA VALE PER SERENA, e non me n'ero accorta: ho reso condizionale la frase del
+# heartbeat e ho lasciato INCONDIZIONATA quella su Serena, una clausola prima NELLA STESSA STRINGA.
+# Una verita' applicata a meta' dentro la frase che stavo correggendo. Costo misurato da
+# designer-hwlab (2026-09-01): serena non installata sulla sua macchina, il contesto la dichiarava
+# attiva, e il gate PreToolUse le bloccava `grep` rimandandola a `find_symbol` che li' non esiste —
+# due override a verbale in venti minuti.
+if command -v serena >/dev/null 2>&1 || [ -x "$HOME/.local/bin/serena" ]; then
+  serena_note="Serena MCP disponibile per i simboli del codice (usa i tool serena invece di leggere a tappeto)."
+else
+  serena_note="Serena NON e' installata su questa macchina: NON cercare i suoi strumenti e non lasciarti rimandare a find_symbol. Qui grep e read sono la via corretta, non una scorciatoia."
+fi
+if [ "$HB_LANCIATO" = 1 ]; then
+  hb_note="heartbeat AUTO lanciato per '$repo' (in background, best-effort: se il registro non e' raggiungibile non arriva, e non lo sapresti da qui — verifica con tools/presence.sh check $repo)."
+else
+  hb_note="heartbeat NON lanciato: non ho trovato tools/presence.sh in nessun clone della playbook. Il tuo presidio NON e' dichiarato e nessuno sa che stai lavorando qui. Rimedio: esporta HENAXIS_PLAYBOOK col percorso del tuo clone, oppure lancia a mano <playbook>/tools/presence.sh heartbeat $repo."
+fi
+ctx="Repo '$repo' agganciato a henaxis-playbook ($ver). Leggi l'orientamento in cima a CLAUDE.md: usa PLAYBOOK (regole+strumenti) E docs/ (modulo, Serena, finalita) — ENTRAMBI, non sottovalutarne nessuno. $serena_note Deleghe agentiche solo con TASK-CONTRACT; PROD e' fonte di verita (AP-040, gate umano). PRESIDIO (AP-046): $hb_note prima di IMPLEMENTARE in un ALTRO progetto verifica il presidio (tools/presence.sh check <repo>); se e' di un'altra sessione, INSTRADA il lavoro li (news/handoff). Nomina la sessione: tools/presence.sh claim <repo> <nome> (il nome appare sulla board). $coord_note$twin_note"
 # ctx privo di doppi apici/newline -> JSON sicuro senza escaping
 printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
