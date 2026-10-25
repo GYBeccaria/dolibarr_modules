@@ -2,7 +2,7 @@
 
 
 <!-- BEGIN SHARED (auto-generato da docs/CLAUDE-core.md, NON editare a mano) -->
-<!-- henaxis-playbook · shared core · version: 1.19 · last_review: 2026-10-18 -->
+<!-- henaxis-playbook · shared core · version: 1.20 · last_review: 2026-10-25 -->
 # Henaxis — convenzioni condivise (auto-caricate)
 
 > Blocco condiviso da **henaxis-playbook** (`shared/CLAUDE-core.md`), inserito automaticamente nel
@@ -51,6 +51,7 @@ Hai **due corpi di conoscenza complementari**: usali **entrambi**, non sottovalu
 - **Delega agentica solo con contratto** (TASK-CONTRACT.md): scope + tool whitelist + gate macchina + checkpoint; l'agente non auto-dichiara "fatto" (AP-041).
 - **Delega che non spreca** (umano, 10/10; misurato: i sotto-agenti erano il 65% della spesa): un agente = **un pezzo**. Tipi con tetto di giri: `esecutore` (lavoro meccanico, Sonnet), `pezzo`, `verificatore`; mai `general-purpose` né `fork` per lavoro lungo (il fork nasce col contesto della madre). Nessun comando in primo piano oltre 4 minuti, stato su file, risposta corta — TASK-CONTRACT.md.
 - **Tool**: prima di scrivere uno script consulta **TOOLS.md** (+ `docs/tech/TOOLS.md` del repo); tool nuovo/esteso → registro con provenienza + news (AP-056). **Mai errori/codici nudi, sempre spiegazioni**: ogni rifiuto di gate/tool/UI dice cosa è fallito, perché (AP) e il fix copiabile; e **ogni uscita**, anche il verde, dice cosa ha controllato, quanto e con quale esito (AP-057; umano, 18/10). **Lo strumento è superiore alla regola** ogni volta che è possibile (AP-006).
+- **Lascia tutto pulito** (AP-108; umano, 25/10: «non sporcare e lasciare tutto pulito… sempre e da tutte le sessioni»): ogni sessione toglie i temporanei che **crea o ha creato** — scratchpad, `/tmp`, cloni e worktree di prova, file non tracciati — appena non servono e comunque prima di chiudere; `trap 'rm -rf "$T"' EXIT` dopo ogni `mktemp`; mai il temporaneo di un'altra sessione. Ciò che serve dopo va nel repository o nella nota. `pulizia-hook.py` avvisa sul proprio scratchpad pesante o fermo e lo svuota a fine sessione.
 - **Lessico** (AP-127; umano, 18/10: «a definizione uguale deve corrispondere un comportamento uguale»): il vocabolario del repository, acronimi compresi con spiegazione e link, sta in `docs/lessico.json`; `tools/lessico.py spiega <termine>` lo consulta, `valida` lo controlla, e a ogni commit avvisa degli usi incoerenti (oggi **avvisa, non blocca**).
 - **Prompt minimi di risveglio** («aggiornati», «news», «fai quello che devi»…): sono un **ordine di eseguire**, non una domanda — l'hook inietta l'orientamento completo (twin, presidio, diretti, handoff, **e i TUOI task**: in-corso di tua proprietà + disponibili nel tuo perimetro; SESSION-AUTOMATION.md). Da lì **GUIDA i tuoi task — falne avanzare almeno UNO ORA**, non solo orientarti. Mai rispondere chiedendo "cosa vuoi che faccia". **Un task in-corso bloccato si DICHIARA sul canale e si scavalca con un disponibile — non giustifica l'attesa**; ci si ferma SOLO ai gate umani (PROD/deploy/transfer/delete/decisioni irreversibili). L'inerzia in attesa del via umano è un anti-pattern, non prudenza (AP-076).
 
